@@ -1,0 +1,12 @@
+{
+    "default_database": "",
+    "default_schema": "dbo",
+    "max_additional_columns": "1",
+    "default_preview_percentage": 15,
+    "sample_percentage": 20,
+    "default_infer_types": true,
+    "default_include_create": true,
+    "default_include_insert": true,
+    "default_batch_insert": false,
+    "insert_batch_size": "5000"
+}

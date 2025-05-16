@@ -14,7 +14,22 @@ import os
 import tkinter as tk
 from tkinter import messagebox
 
-CONFIG_FILE = "config.json"
+def get_config_path():
+    import platform
+    import os
+
+    app_name = "SQLTableBuilderPro"
+
+    if platform.system() == "Windows":
+        base_dir = os.environ.get("APPDATA", os.path.expanduser("~"))
+    else:
+        base_dir = os.path.join(os.path.expanduser("~"), ".config")
+
+    config_dir = os.path.join(base_dir, app_name)
+    os.makedirs(config_dir, exist_ok=True)
+    return os.path.join(config_dir, "config.json")
+
+CONFIG_FILE = get_config_path()
 
 class ConfigManager:
     def __init__(self, path=CONFIG_FILE):

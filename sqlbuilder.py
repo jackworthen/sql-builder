@@ -4,9 +4,6 @@
 
 from config_manager import ConfigManager
 
-import sys
-import os
-
 def resource_path(filename):
     """ Get absolute path to resource, works for dev and for PyInstaller bundle """
     if hasattr(sys, '_MEIPASS'):
@@ -17,7 +14,6 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 import csv
-import subprocess
 import sys
 import os
 from collections import Counter

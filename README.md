@@ -54,14 +54,6 @@ A powerful, user-friendly desktop application that automatically generates SQL C
 5. **Customize Columns**: Adjust column names and data types as needed
 6. **Generate Scripts**: Choose CREATE and/or INSERT options and save your SQL files
 
-## 📊 Screenshots
-
-### File Selection Screen
-The main interface for selecting and previewing your data files.
-
-### Column Configuration Screen
-Detailed configuration of table structure, data types, and constraints.
-
 ## 🛠️ Configuration
 
 ### Settings Panel

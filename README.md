@@ -66,6 +66,5 @@
 ## 🛈 About
 
 **SQL Table Builder Pro**  
-Version 1.3.1  
-Build Date: 2025-04-24  
+Version 1.5.0 
 Developed by Jack Worthen

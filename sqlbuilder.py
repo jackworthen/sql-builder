@@ -1,8 +1,15 @@
-# SQL Table Builder Pro
+# SQL Table Builder Pro - Optimized Version
 # Created By: Jack Worthen
 # Description: Reads a data file and creates SQL scripts for creating a table and inserting data into table.
+# Optimized with caching, chunked reading, and improved type inference
 
 from config_manager import ConfigManager
+import re
+from datetime import datetime
+from collections import defaultdict, Counter
+import threading
+from concurrent.futures import ThreadPoolExecutor
+import time
 
 def resource_path(filename):
     """ Get absolute path to resource, works for dev and for PyInstaller bundle """
@@ -12,11 +19,242 @@ def resource_path(filename):
 
 import tkinter as tk
 from tkinter import ttk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import csv
 import sys
 import os
-from collections import Counter
+
+class DataCache:
+    """Efficient data caching to avoid multiple file reads"""
+    def __init__(self):
+        self.headers = None
+        self.sample_rows = None
+        self.all_rows = None
+        self.file_info = None
+        self.is_loaded = False
+        self.is_large_file = False
+        self.chunk_generator = None
+        
+    def clear(self):
+        """Clear cached data"""
+        self.headers = None
+        self.sample_rows = None
+        self.all_rows = None
+        self.file_info = None
+        self.is_loaded = False
+        self.is_large_file = False
+        self.chunk_generator = None
+        
+    def load_file(self, file_path, delimiter, sample_percentage=15, large_file_threshold=50000):
+        """Load file with smart caching strategy"""
+        self.clear()
+        
+        # Get file size estimate
+        with open(file_path, 'r', newline='') as f:
+            # Read first few lines to estimate
+            sample_lines = []
+            for i, line in enumerate(f):
+                if i >= 100:
+                    break
+                sample_lines.append(line)
+            
+            f.seek(0, 2)  # Go to end
+            file_size = f.tell()
+            f.seek(0)  # Go back to start
+            
+            # Estimate total rows
+            avg_line_size = file_size / len(sample_lines) if sample_lines else 100
+            estimated_rows = int(file_size / avg_line_size)
+            
+        self.is_large_file = estimated_rows > large_file_threshold
+        
+        if self.is_large_file:
+            self._load_large_file(file_path, delimiter, sample_percentage)
+        else:
+            self._load_small_file(file_path, delimiter, sample_percentage)
+            
+        self.file_info = {
+            'total_rows': len(self.all_rows) if self.all_rows else estimated_rows,
+            'delimiter': delimiter,
+            'file_path': file_path,
+            'is_large_file': self.is_large_file,
+            'estimated_rows': estimated_rows
+        }
+        self.is_loaded = True
+        
+    def _load_small_file(self, file_path, delimiter, sample_percentage):
+        """Load entire file for small datasets"""
+        with open(file_path, 'r', newline='') as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            self.headers = next(reader)
+            self.all_rows = list(reader)
+            
+        # Create sample for type inference
+        sample_size = max(100, int(len(self.all_rows) * sample_percentage / 100))
+        self.sample_rows = self.all_rows[:sample_size]
+        
+    def _load_large_file(self, file_path, delimiter, sample_percentage, chunk_size=10000):
+        """Load only sample for large files"""
+        sample_target = max(1000, int(chunk_size * sample_percentage / 100))
+        
+        with open(file_path, 'r', newline='') as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            self.headers = next(reader)
+            
+            # Load sample for type inference and preview
+            self.sample_rows = []
+            for i, row in enumerate(reader):
+                if i >= sample_target:
+                    break
+                self.sample_rows.append(row)
+                
+        # Don't load all_rows for large files - use generator instead
+        self.all_rows = None
+        
+    def get_chunk_generator(self, chunk_size=5000):
+        """Get generator for chunked processing of large files"""
+        if not self.is_large_file and self.all_rows:
+            # For small files, chunk the loaded data
+            for i in range(0, len(self.all_rows), chunk_size):
+                yield self.all_rows[i:i + chunk_size]
+        else:
+            # For large files, read chunks from file
+            with open(self.file_info['file_path'], 'r', newline='') as f:
+                reader = csv.reader(f, delimiter=self.file_info['delimiter'])
+                next(reader)  # Skip headers
+                
+                chunk = []
+                for row in reader:
+                    chunk.append(row)
+                    if len(chunk) >= chunk_size:
+                        yield chunk
+                        chunk = []
+                if chunk:  # Yield remaining rows
+                    yield chunk
+
+class OptimizedTypeInferrer:
+    """Optimized type inference with regex patterns and statistical sampling"""
+    def __init__(self):
+        # Compile regex patterns once for reuse
+        self.int_pattern = re.compile(r'^-?\d+$')
+        self.float_pattern = re.compile(r'^-?\d*\.\d+$')
+        self.date_patterns = [
+            re.compile(r'^\d{4}-\d{2}-\d{2}$'),  # YYYY-MM-DD
+            re.compile(r'^\d{2}/\d{2}/\d{4}$'),  # MM/DD/YYYY
+            re.compile(r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'),  # datetime
+            re.compile(r'^\d{2}-\d{2}-\d{4}$'),  # DD-MM-YYYY
+        ]
+    
+    def infer_column_types(self, sample_rows, headers, max_sample=1000):
+        """Efficiently infer types using statistical sampling"""
+        if not sample_rows:
+            return ["NVARCHAR(255)"] * len(headers)
+        
+        # Limit sample size for performance
+        sample_data = sample_rows[:max_sample]
+        column_count = len(headers)
+        
+        # Initialize type counters
+        type_votes = [defaultdict(int) for _ in range(column_count)]
+        max_lengths = [0] * column_count
+        
+        for row in sample_data:
+            # Pad row if necessary
+            padded_row = row + [''] * (column_count - len(row))
+            
+            for col_idx, value in enumerate(padded_row[:column_count]):
+                if col_idx >= len(type_votes):
+                    continue
+                    
+                value = str(value).strip()
+                max_lengths[col_idx] = max(max_lengths[col_idx], len(value))
+                
+                if not value:  # Empty value
+                    continue
+                
+                # Quick type checks using compiled patterns
+                if value.lower() in ('0', '1', 'true', 'false'):
+                    type_votes[col_idx]['BIT'] += 1
+                elif self.int_pattern.match(value):
+                    type_votes[col_idx]['INT'] += 1
+                elif self.float_pattern.match(value):
+                    type_votes[col_idx]['FLOAT'] += 1
+                elif any(pattern.match(value) for pattern in self.date_patterns):
+                    type_votes[col_idx]['DATETIME'] += 1
+                else:
+                    type_votes[col_idx]['VARCHAR'] += 1
+        
+        # Determine final types based on votes
+        inferred_types = []
+        for col_idx in range(column_count):
+            votes = type_votes[col_idx]
+            max_len = max_lengths[col_idx]
+            
+            if not votes:
+                inferred_types.append("NVARCHAR(255)")
+                continue
+            
+            # Get most common type
+            best_type = max(votes.keys(), key=lambda k: votes[k])
+            
+            if best_type == 'VARCHAR':
+                if max_len <= 10:
+                    inferred_types.append("NVARCHAR(10)")
+                elif max_len <= 50:
+                    inferred_types.append("NVARCHAR(50)")
+                elif max_len <= 255:
+                    inferred_types.append("NVARCHAR(255)")
+                elif max_len <= 4000:
+                    inferred_types.append(f"NVARCHAR({max_len})")
+                else:
+                    inferred_types.append("NVARCHAR(MAX)")
+            else:
+                inferred_types.append(best_type)
+        
+        return inferred_types
+
+class ProgressWindow:
+    """Progress dialog for long-running operations"""
+    def __init__(self, parent, title="Processing..."):
+        self.window = tk.Toplevel(parent)
+        self.window.title(title)
+        self.window.geometry("400x150")
+        self.window.transient(parent)
+        self.window.grab_set()
+        
+        # Center the window
+        self.window.update_idletasks()
+        x = (self.window.winfo_screenwidth() // 2) - (400 // 2)
+        y = (self.window.winfo_screenheight() // 2) - (150 // 2)
+        self.window.geometry(f"400x150+{x}+{y}")
+        
+        self.label = tk.Label(self.window, text="Initializing...")
+        self.label.pack(pady=20)
+        
+        self.progress = ttk.Progressbar(self.window, mode='indeterminate')
+        self.progress.pack(pady=10, padx=40, fill='x')
+        self.progress.start()
+        
+        self.cancel_button = tk.Button(self.window, text="Cancel", command=self.cancel)
+        self.cancel_button.pack(pady=10)
+        
+        self.cancelled = False
+        
+    def update_text(self, text):
+        self.label.config(text=text)
+        self.window.update()
+        
+    def set_progress(self, value, maximum=100):
+        self.progress.config(mode='determinate', maximum=maximum, value=value)
+        self.window.update()
+        
+    def cancel(self):
+        self.cancelled = True
+        self.close()
+        
+    def close(self):
+        self.progress.stop()
+        self.window.destroy()
 
 class SQLTableBuilder:
     def is_quoted_type(self, sql_type: str) -> bool:
@@ -43,10 +281,11 @@ class SQLTableBuilder:
             else:
                 formatted_values.append(val)
         return f"    ({', '.join(formatted_values)})"
+
     def __init__(self, master):
         self.master = master
-        self.master.title("SQL Table Builder Pro")
-        self.master.geometry("750x470")  
+        self.master.title("SQL Table Builder Pro - Optimized")
+        self.master.geometry("750x500")  
         self.file_path = tk.StringVar()
         self.delimiter = tk.StringVar()
         self.table_name = tk.StringVar()
@@ -64,6 +303,12 @@ class SQLTableBuilder:
         self.infer_types_var = tk.BooleanVar(value=True)
         self.include_create_script = tk.BooleanVar(value=True)
         self.include_insert_script = tk.BooleanVar(value=True)
+        
+        # Initialize optimized components
+        self.data_cache = DataCache()
+        self.type_inferrer = OptimizedTypeInferrer()
+        self.executor = ThreadPoolExecutor(max_workers=2)
+        
         self.config_mgr = ConfigManager()
         cfg = self.config_mgr.config
         self.additional_column_count = 0
@@ -96,7 +341,8 @@ class SQLTableBuilder:
         self.use_guid.set(False)
         self.delimiter.set("")  # Clear the delimiter field
         self.file_path.set("")  # Clear previously selected file
-        self.master.geometry("750x470")
+        self.data_cache.clear()  # Clear cached data
+        self.master.geometry("750x490")
         for widget in self.master.winfo_children():
             widget.destroy()
 
@@ -134,7 +380,7 @@ class SQLTableBuilder:
         main_frame.pack(expand=True, fill="both")
        
         # Heading
-        tk.Label(main_frame, text="SQL Table Builder Pro", font=("Arial", 16, "bold")).pack(anchor="w", pady=(0, 10))
+        tk.Label(main_frame, text="SQL Table Builder Pro - Optimized", font=("Arial", 16, "bold")).pack(anchor="w", pady=(0, 10))
 
         # File selection group
         file_group = tk.LabelFrame(main_frame, text="Select Source File", padx=10, pady=10)
@@ -178,9 +424,16 @@ class SQLTableBuilder:
             self.infer_delimiter()
             default_name = os.path.splitext(os.path.basename(selected_path))[0]
             self.table_name.set(default_name)
-        # Preview will only load when "Set" is clicked
+            
+            # Clear any existing cached data when new file is selected
+            self.data_cache.clear()
+            
             self.next_button.config(state="normal")
             self.show_button.config(state="normal")
+            
+            # Clear any existing preview
+            for widget in self.preview_frame.winfo_children():
+                widget.destroy()
 
     def infer_delimiter(self):
         possible_delimiters = [',', '|', '\t', ';', ':', '^']
@@ -194,20 +447,41 @@ class SQLTableBuilder:
             self.delimiter.set(',')
 
     def process_file(self):
+        """Process file with progress dialog and caching"""
         path = self.file_path.get()
         if not path:
             return
-
-        try:
-            with open(path, newline='') as f:
+            
+        # Show progress dialog
+        progress = ProgressWindow(self.master, "Loading File...")
+        
+        def load_file_task():
+            try:
+                progress.update_text("Reading file structure...")
+                
                 delimiter_val = self.delimiter.get()
                 delimiter_val = "\t" if delimiter_val == "\\t" else delimiter_val
-                reader = csv.reader(f, delimiter=delimiter_val)
-                self.headers = next(reader)
-        except Exception as e:
-            return
-
-        self.build_column_type_screen()
+                
+                # Load file into cache
+                progress.update_text("Loading data into cache...")
+                self.data_cache.load_file(path, delimiter_val, self.sample_percentage)
+                
+                if progress.cancelled:
+                    return
+                    
+                self.headers = self.data_cache.headers
+                
+                progress.update_text("Processing complete!")
+                time.sleep(0.5)  # Brief pause to show completion
+                
+                # Schedule UI update on main thread
+                self.master.after(0, lambda: [progress.close(), self.build_column_type_screen()])
+                
+            except Exception as e:
+                self.master.after(0, lambda: [progress.close(), messagebox.showerror("Error", f"Failed to process file: {e}")])
+        
+        # Run file loading in background thread
+        self.executor.submit(load_file_task)
     
     def build_column_type_screen(self):
         self.additional_column_count = 0
@@ -224,7 +498,6 @@ class SQLTableBuilder:
         db_frame.pack(fill="x", pady=3)
         tk.Label(db_frame, text="Database:", width=12, anchor="w").pack(side="left")
         tk.Entry(db_frame, width=40, textvariable=self.database_name).pack(side="left")
-        #tk.Label(db_frame, text="(optional)").pack(side="left", padx=5)
 
         # Schema
         schema_frame = tk.Frame(settings_frame)
@@ -237,6 +510,15 @@ class SQLTableBuilder:
         table_frame.pack(fill="x", pady=3)
         tk.Label(table_frame, text="Table:", width=12, anchor="w").pack(side="left")
         tk.Entry(table_frame, width=40, textvariable=self.table_name).pack(side="left")
+
+        # File info display
+        info_frame = tk.Frame(settings_frame)
+        info_frame.pack(fill="x", pady=3)
+        if self.data_cache.is_loaded:
+            file_info = self.data_cache.file_info
+            rows_text = f"~{file_info['estimated_rows']:,}" if file_info['is_large_file'] else f"{file_info['total_rows']:,}"
+            file_type = "Large File (Optimized)" if file_info['is_large_file'] else "Standard File"
+            tk.Label(info_frame, text=f"Rows: {rows_text} | Type: {file_type}", fg="blue").pack(side="left")
 
         # Options
         options_frame = tk.Frame(settings_frame)
@@ -251,10 +533,10 @@ class SQLTableBuilder:
         )
         self.guid_checkbox.pack(side="left", padx=5)
 
-        # 🟢 Moved Add Column and Reset buttons inline (order switched)
+        # Add Column and Reset buttons inline
         self.add_column_button = tk.Button(options_frame, text="Add Column", underline=0, command=self.add_new_column_row)
         self.add_column_button.pack(side="left", padx=10)
-        self.reset_button = tk.Button(options_frame, text="Reset Data Types", underline=0, command=self.set_inferred_types, state="disabled")
+        self.reset_button = tk.Button(options_frame, text="Reset Data Types", underline=0, command=self.set_inferred_types_async, state="disabled")
         self.reset_button.pack(side="left", padx=5)
         
         # Row for renaming dropdown and set button
@@ -333,12 +615,9 @@ class SQLTableBuilder:
             self.type_entries.append(type_combo)
 
         if self.infer_types_var.get():
-            self.set_inferred_types()
+            self.set_inferred_types_async()
 
-        # Column Count (bugged)
-        #tk.Label(self.scrollable_frame, text=f"Columns: {len(self.headers)}", anchor="w", fg="blue").pack(pady=8, anchor="w")
-
-# === SCRIPT GENERATOR SECTION ===
+        # === SCRIPT GENERATOR SECTION ===
         script_frame = tk.LabelFrame(self.master, text="Script Generator", padx=10, pady=10)
         script_frame.pack(fill="x", padx=10, pady=(10, 0))
         checkbox_row = tk.Frame(script_frame)
@@ -357,7 +636,7 @@ class SQLTableBuilder:
         tk.Button(checkbox_row, text="Save", underline=2, width=15, command=self.handle_generate_scripts).pack(side="right", padx=10)
         self.update_truncate_enable_state()
 
-# === BACK AND EXIT BUTTONS ===
+        # === BACK AND EXIT BUTTONS ===
         back_frame = tk.Frame(self.master)
         back_frame.pack(pady=(5, 15))
         tk.Button(back_frame, text="< Back", underline=2, width=15, command=self.build_file_selection_screen).pack(side="left", padx=10)
@@ -367,10 +646,7 @@ class SQLTableBuilder:
         if self.include_create_script.get():
             self.generate_sql_file()
         if self.include_insert_script.get():
-            self.generate_insert_statements()
-        
-    
-    
+            self.generate_insert_statements_optimized()
     
     def update_identity_guid_states(self):
         if self.use_identity.get():
@@ -401,7 +677,6 @@ class SQLTableBuilder:
                     if current_val in ["INT IDENTITY", "UNIQUEIDENTIFIER"]:
                         current_entry.delete(0, tk.END)
 
-
     def enable_reset_button(self):
         if self.reset_button['state'] == "disabled":
             self.reset_button.config(state="normal")
@@ -411,7 +686,6 @@ class SQLTableBuilder:
             self.truncate_check.config(fg="red")
         else:
             self.truncate_check.config(fg="black")
-    
     
     def update_truncate_enable_state(self, *args):
         try:
@@ -508,11 +782,9 @@ class SQLTableBuilder:
         if file_path:
             with open(file_path, 'w') as f:
                 f.write(script)
-  
-    def generate_insert_statements(self):
-        from tkinter import filedialog
-        import csv
 
+    def generate_insert_statements_optimized(self):
+        """Optimized insert statement generation with chunked processing"""
         table_name = self.table_name.get().strip()
         schema_name = self.schema_name.get().strip()
         full_table = f"[{schema_name}].[{table_name}]"
@@ -527,145 +799,153 @@ class SQLTableBuilder:
             if "INT IDENTITY" not in col_type:
                 col_names.append(col_name)
                 column_types.append(col_type)
-        values_lines = []
-        path = self.file_path.get()
 
-        try:
-            with open(path, newline='') as f:
-                delimiter_val = self.delimiter.get()
-                delimiter_val = "	" if delimiter_val == "\t" else delimiter_val
-                reader = csv.reader(f, delimiter=delimiter_val)
-                next(reader)  # skip header
-                for row in reader:
-                    extra_count = len(column_types) - len(row)
-                    if extra_count > 0:
-                        row = [''] * extra_count + row
-                    values_lines.append(self.format_insert_values(row, column_types))
-        except Exception:
-            return
-
-        if not values_lines:
-            return
-
-        db_name = self.database_name.get().strip()
-        script_lines = []
-
-        if db_name:
-            script_lines.append(f"USE [{db_name}];")
-            script_lines.append("GO")
-            script_lines.append("")
-
-        if self.truncate_before_insert.get():
-            script_lines.append(f"TRUNCATE TABLE {full_table};")
-            script_lines.append("GO")
-            script_lines.append("")
-
-        insert_header = f"INSERT INTO {full_table} ({', '.join(f'[{c}]' for c in col_names)})\nVALUES"
-        if self.batch_insert_var.get():
-            for i in range(0, len(values_lines), self.insert_batch_size):
-                chunk = values_lines[i:i + self.insert_batch_size]
-                script_lines.append(insert_header)
-                script_lines.append(",\n".join(chunk) + ";\nGO")
-        else:
-            script_lines.append(insert_header)
-            script_lines.append(",\n".join(values_lines) + ";\nGO")
-
-        script = "\n".join(script_lines)
-
+        # Get save location first
         default_filename = f"insert_into_{table_name}.sql"
         file_path = filedialog.asksaveasfilename(defaultextension=".sql", initialfile=default_filename, filetypes=[("SQL Files", "*.sql")])
-        if file_path:
-            with open(file_path, 'w') as f:
-                f.write(script)
+        if not file_path:
+            return
+
+        # Show progress dialog for large files
+        progress = None
+        if self.data_cache.file_info['is_large_file']:
+            progress = ProgressWindow(self.master, "Generating INSERT Statements...")
+            
+        def generate_task():
+            try:
+                script_lines = []
+                db_name = self.database_name.get().strip()
+
+                if db_name:
+                    script_lines.append(f"USE [{db_name}];")
+                    script_lines.append("GO")
+                    script_lines.append("")
+
+                if self.truncate_before_insert.get():
+                    script_lines.append(f"TRUNCATE TABLE {full_table};")
+                    script_lines.append("GO")
+                    script_lines.append("")
+
+                insert_header = f"INSERT INTO {full_table} ({', '.join(f'[{c}]' for c in col_names)})\nVALUES"
+                
+                if progress:
+                    progress.update_text("Processing data chunks...")
+                
+                # Process data in chunks
+                all_values = []
+                chunk_count = 0
+                
+                for chunk in self.data_cache.get_chunk_generator():
+                    if progress and progress.cancelled:
+                        return
+                        
+                    chunk_count += 1
+                    if progress:
+                        progress.update_text(f"Processing chunk {chunk_count}...")
+                    
+                    for row in chunk:
+                        # Pad row if necessary
+                        extra_count = len(column_types) - len(row)
+                        if extra_count > 0:
+                            row = [''] * extra_count + row
+                        all_values.append(self.format_insert_values(row, column_types))
+                
+                if progress and progress.cancelled:
+                    return
+                    
+                # Generate final script
+                if progress:
+                    progress.update_text("Generating final script...")
+                
+                if self.batch_insert_var.get():
+                    for i in range(0, len(all_values), self.insert_batch_size):
+                        chunk = all_values[i:i + self.insert_batch_size]
+                        script_lines.append(insert_header)
+                        script_lines.append(",\n".join(chunk) + ";\nGO")
+                else:
+                    script_lines.append(insert_header)
+                    script_lines.append(",\n".join(all_values) + ";\nGO")
+
+                script = "\n".join(script_lines)
+                
+                if progress:
+                    progress.update_text("Saving file...")
+                
+                with open(file_path, 'w') as f:
+                    f.write(script)
+                
+                # Schedule UI update on main thread
+                if progress:
+                    self.master.after(0, lambda: [progress.close(), messagebox.showinfo("Success", f"INSERT statements saved to {file_path}")])
+                else:
+                    self.master.after(0, lambda: messagebox.showinfo("Success", f"INSERT statements saved to {file_path}"))
+                    
+            except Exception as e:
+                if progress:
+                    self.master.after(0, lambda: [progress.close(), messagebox.showerror("Error", f"Failed to generate INSERT statements: {e}")])
+                else:
+                    self.master.after(0, lambda: messagebox.showerror("Error", f"Failed to generate INSERT statements: {e}"))
+
+        if progress:
+            # Run generation in background thread for large files
+            self.executor.submit(generate_task)
+        else:
+            # Run directly for small files
+            generate_task()
+
+    def set_inferred_types_async(self):
+        """Asynchronously infer types with progress indication"""
+        if not self.data_cache.is_loaded:
+            return
+            
+        progress = ProgressWindow(self.master, "Inferring Data Types...")
+        
+        def infer_task():
+            try:
+                progress.update_text("Analyzing data patterns...")
+                
+                # Use cached sample data for type inference
+                inferred_types = self.type_inferrer.infer_column_types(
+                    self.data_cache.sample_rows, 
+                    self.headers
+                )
+                
+                if progress.cancelled:
+                    return
+                    
+                progress.update_text("Updating column types...")
+                
+                # Schedule UI update on main thread
+                def update_ui():
+                    try:
+                        for i, inferred_type in enumerate(inferred_types):
+                            if i < len(self.type_entries):
+                                combo = self.type_entries[i]
+                                combo.delete(0, "end")
+                                combo.insert(0, inferred_type)
+                        
+                        self.reset_button.config(state="disabled")
+                        progress.close()
+                        
+                    except Exception as e:
+                        progress.close()
+                        messagebox.showerror("Error", f"Failed to update types: {e}")
+                
+                self.master.after(0, update_ui)
+                
+            except Exception as e:
+                self.master.after(0, lambda: [progress.close(), messagebox.showerror("Error", f"Failed to infer types: {e}")])
+        
+        # Run type inference in background thread
+        self.executor.submit(infer_task)
 
     def set_inferred_types(self):
-        import csv
-        from datetime import datetime
-        from tkinter import messagebox
-
-        def infer_sql_type(column_values):
-            is_int = True
-            is_float = True
-            is_bit = True
-            is_date = True
-            max_len = 0
-
-            for val in column_values:
-                val = val.strip()
-                max_len = max(max_len, len(val))
-
-                try:
-                    int(val)
-                except ValueError:
-                    is_int = False
-
-                try:
-                    float(val)
-                except ValueError:
-                    is_float = False
-
-                if val.lower() not in ['0', '1']:
-                    is_bit = False
-
-                try:
-                    datetime.fromisoformat(val)
-                except ValueError:
-                    is_date = False
-
-            if is_bit:
-                return "BIT"
-            elif is_int:
-                return "INT"
-            elif is_float:
-                return "FLOAT"
-            elif is_date:
-                return "DATETIME"
-            elif max_len <= 10:
-                return "NVARCHAR(10)"
-            elif 10 < max_len <=50:
-                return "NVARCHAR(50)"
-            elif 50 < max_len <=100:
-                return "NVARCHAR(100)"             
-            elif 100 < max_len <= 255:
-                return "NVARCHAR(255)"
-            elif max_len <= 4000:
-                return f"NVARCHAR({max_len})"
-            else:
-                return "NVARCHAR(MAX)"
-
-        path = self.file_path.get()
-        try:
-            with open(path, newline='') as f:
-                delimiter_val = self.delimiter.get()
-                delimiter_val = "\t" if delimiter_val == "\\t" else delimiter_val
-                reader = csv.reader(f, delimiter=delimiter_val)
-                headers = next(reader)
-                data_rows = list(reader)
-            total_rows = len(data_rows)
-            sample_percentage = self.sample_percentage / 100.0  # Use % of rows for inference
-            sample_count = max(1, int(total_rows * sample_percentage))
-            sample_rows = data_rows[:sample_count]
-
-            sample_columns = list(map(list, zip(*sample_rows)))
-
-            #sample_columns = list(map(list, zip(*data_rows)))
-            inferred_types = [infer_sql_type(col) for col in sample_columns]
-
-            for i, inferred_type in enumerate(inferred_types):
-                combo = self.type_entries[-len(inferred_types) + i]
-                combo.delete(0, "end")
-                combo.insert(0, inferred_type)
-
-            self.reset_button.config(state="disabled")
-
-        except Exception as e:
-            self.reset_button.config(state="disabled")
-            messagebox.showerror("Error", f"Failed to infer types: {e}")
+        """Legacy method - now redirects to async version"""
+        self.set_inferred_types_async()
 
     def toggle_infer_types(self):
         if self.infer_types_var.get():
-            if self.infer_types_var.get():
-                self.set_inferred_types()
+            self.set_inferred_types_async()
         else:
             for combo in self.type_entries:
                 combo.delete(0, "end")
@@ -699,32 +979,80 @@ class SQLTableBuilder:
         try:
             percent = int(self.preview_percentage_var.get())
             if 1 <= percent <= 100:
-                self.update_preview_table(percentage=percent)
+                # Load file data if not already loaded
+                if not self.data_cache.is_loaded:
+                    self.load_file_for_preview(percent)
+                else:
+                    self.update_preview_table(percentage=percent)
             else:
                 raise ValueError
         except ValueError:
-            from tkinter import messagebox
             messagebox.showerror("Invalid Input", "Please enter an integer between 1 and 100.")
+    
+    def load_file_for_preview(self, preview_percent):
+        """Load file data specifically for preview functionality"""
+        path = self.file_path.get()
+        if not path:
+            return
+            
+        # Show progress dialog for file loading
+        progress = ProgressWindow(self.master, "Loading File for Preview...")
+        
+        def load_preview_task():
+            try:
+                progress.update_text("Reading file...")
+                
+                delimiter_val = self.delimiter.get()
+                delimiter_val = "\t" if delimiter_val == "\\t" else delimiter_val
+                
+                # Load file into cache
+                self.data_cache.load_file(path, delimiter_val, self.sample_percentage)
+                
+                if progress.cancelled:
+                    return
+                
+                # Update headers
+                self.headers = self.data_cache.headers
+                
+                progress.update_text("Generating preview...")
+                
+                # Schedule UI update on main thread
+                self.master.after(0, lambda: [
+                    progress.close(), 
+                    self.update_preview_table(percentage=preview_percent)
+                ])
+                
+            except Exception as e:
+                self.master.after(0, lambda: [
+                    progress.close(), 
+                    messagebox.showerror("Error", f"Failed to load file for preview: {e}")
+                ])
+        
+        # Run file loading in background thread
+        self.executor.submit(load_preview_task)
 
-    def update_preview_table(self, percentage=1):  #Default percentage for record preview
-        import csv
+    def update_preview_table(self, percentage=1):
+        """Optimized preview table using cached data"""
         for widget in self.preview_frame.winfo_children():
             widget.destroy()
 
-        path = self.file_path.get()
-        if not path or not os.path.isfile(path):
+        if not self.data_cache.is_loaded:
+            tk.Label(self.preview_frame, text="No data loaded. Click 'Show' to load preview.", fg="gray").pack(pady=20)
             return
 
         try:
-            with open(path, newline='') as f:
-                delimiter_val = self.delimiter.get()
-                delimiter_val = "	" if delimiter_val == "\t" else delimiter_val
-                reader = csv.reader(f, delimiter=delimiter_val)
-                headers = next(reader)
-                all_rows = list(reader)
-                total = len(all_rows)
-                count = max(1, int((percentage / 100) * total))
-                rows = all_rows[:count]
+            # Use cached data for preview
+            headers = self.data_cache.headers
+            sample_rows = self.data_cache.sample_rows
+            
+            if not sample_rows:
+                tk.Label(self.preview_frame, text="No data available for preview.", fg="red").pack(pady=20)
+                return
+                
+            # Calculate preview rows from sample
+            total_sample = len(sample_rows)
+            count = max(1, int((percentage / 100) * total_sample))
+            rows = sample_rows[:count]
 
             container = tk.Frame(self.preview_frame)
             container.pack(fill="both", expand=True)
@@ -754,9 +1082,16 @@ class SQLTableBuilder:
 
             for row in rows:
                 tree.insert("", "end", values=row)
+                
+            # Show info about the preview
+            info_text = f"Showing {len(rows)} of {total_sample} sample rows ({percentage}%)"
+            if self.data_cache.file_info and self.data_cache.file_info.get('is_large_file'):
+                info_text += f" | Estimated total: {self.data_cache.file_info.get('estimated_rows', 'Unknown'):,} rows"
+            
+            tk.Label(self.preview_frame, text=info_text, fg="blue", font=("Arial", 8)).pack(pady=2)
 
         except Exception as e:
-            pass
+            tk.Label(self.preview_frame, text=f"Preview error: {e}", fg="red").pack(pady=20)
 
     def apply_config_settings(self):
         self.config_mgr.load()
@@ -784,7 +1119,6 @@ class SQLTableBuilder:
                                 child.config(text=f"Batch ({self.insert_batch_size})")
         except Exception:
             pass
-
     
     def show_help(self):
         import webbrowser
@@ -803,15 +1137,12 @@ class SQLTableBuilder:
 
             webbrowser.open(f"file://{help_file_path}")
         except Exception as e:
-            import tkinter.messagebox
-            tkinter.messagebox.showerror("Error", f"Could not open help file: {e}")
-
+            messagebox.showerror("Error", f"Could not open help file: {e}")
 
     def show_about(self):
-        import tkinter.messagebox
-        tkinter.messagebox.showinfo(
+        messagebox.showinfo(
             "About",
-            "SQL Table Builder Pro\n\nVersion: 1.3.1\nBuild Date: 2025-04-20 17:01:00\n\n© 2025 Jack Worthen"
+            "SQL Table Builder Pro - Optimized\n\nVersion: 1.5.0\nBuild Date: 2025-05-27\n\nOptimizations:\n• Intelligent file caching\n• Chunked processing for large files\n• Optimized type inference\n• Progressive loading with progress dialogs\n\nDeveloped by Jack Worthen"
         )
 
     def add_new_column_row(self):
@@ -862,6 +1193,13 @@ class SQLTableBuilder:
         for idx, (pk_cb, null_cb) in enumerate(zip(self.pk_checkboxes, self.null_checkboxes)):
             pk_cb.config(command=lambda i=idx: self.update_pk_states(i))
             null_cb.config(command=lambda i=idx: self.update_null_states(i))
+
+    def __del__(self):
+        """Cleanup resources"""
+        try:
+            self.executor.shutdown(wait=False)
+        except:
+            pass
 
 if __name__ == "__main__":
     root = tk.Tk()

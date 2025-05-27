@@ -284,7 +284,7 @@ class SQLTableBuilder:
 
     def __init__(self, master):
         self.master = master
-        self.master.title("SQL Table Builder Pro - Optimized")
+        self.master.title("SQL Table Builder Pro")
         self.master.geometry("750x500")  
         self.file_path = tk.StringVar()
         self.delimiter = tk.StringVar()

@@ -1,4 +1,4 @@
-# SQL Table Builder Pro - Optimized Version
+# SQL Table Builder Pro
 # Created By: Jack Worthen
 # Description: Reads a data file and creates SQL scripts for creating a table and inserting data into table.
 # Optimized with caching, chunked reading, and improved type inference
@@ -380,7 +380,7 @@ class SQLTableBuilder:
         main_frame.pack(expand=True, fill="both")
        
         # Heading
-        tk.Label(main_frame, text="SQL Table Builder Pro - Optimized", font=("Arial", 16, "bold")).pack(anchor="w", pady=(0, 10))
+        tk.Label(main_frame, text="SQL Table Builder Pro", font=("Arial", 16, "bold")).pack(anchor="w", pady=(0, 10))
 
         # File selection group
         file_group = tk.LabelFrame(main_frame, text="Select Source File", padx=10, pady=10)
@@ -1142,7 +1142,7 @@ class SQLTableBuilder:
     def show_about(self):
         messagebox.showinfo(
             "About",
-            "SQL Table Builder Pro - Optimized\n\nVersion: 1.5.0\nBuild Date: 2025-05-27\n\nOptimizations:\n• Intelligent file caching\n• Chunked processing for large files\n• Optimized type inference\n• Progressive loading with progress dialogs\n\nDeveloped by Jack Worthen"
+            "SQL Table Builder Pro\n\nVersion: 1.5.0\nBuild Date: 2025-05-27\n\nOptimizations:\n• Intelligent file caching\n• Chunked processing for large files\n• Optimized type inference\n• Progressive loading with progress dialogs\n\nDeveloped by Jack Worthen"
         )
 
     def add_new_column_row(self):

@@ -103,12 +103,6 @@ class ConfigManager:
         
         self._create_sql_tab(sql_frame, entries)
         
-        # Performance Tab
-        perf_frame = ttk.Frame(notebook, padding="20")
-        notebook.add(perf_frame, text="Performance")
-        
-        self._create_performance_tab(perf_frame, entries)
-        
         # Button frame - inside main frame for guaranteed visibility
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
@@ -241,28 +235,18 @@ class ConfigManager:
                                   variable=batch_var)
         batch_cb.pack(anchor=tk.W, pady=(0, 10))
         entries["default_batch_insert"] = batch_var
-
-    def _create_performance_tab(self, parent, entries):
-        """Create performance section"""
-        # Title
-        title_label = ttk.Label(parent, text="Performance Settings", 
-                               font=('TkDefaultFont', 10, 'bold'))
-        title_label.pack(anchor=tk.W, pady=(0, 15))
         
-        # Batch Processing
-        batch_frame = ttk.LabelFrame(parent, text="Batch Processing", padding="15")
-        batch_frame.pack(fill=tk.X)
-        
-        ttk.Label(batch_frame, text="Insert Batch Size (rows per batch):").pack(anchor=tk.W)
+        # Batch Size Input (moved from Performance tab)
+        ttk.Label(insert_frame, text="Insert Batch Size (rows per batch):").pack(anchor=tk.W)
         
         # Add description
-        desc_label = ttk.Label(batch_frame, 
+        desc_label = ttk.Label(insert_frame, 
                               text="Higher values improve performance but use more memory",
                               font=('TkDefaultFont', 8),
                               foreground='gray')
         desc_label.pack(anchor=tk.W, pady=(0, 10))
         
-        batch_entry = ttk.Entry(batch_frame, width=20)
+        batch_entry = ttk.Entry(insert_frame, width=20)
         batch_entry.insert(0, str(self.config.get("insert_batch_size", 5000)))
         batch_entry.pack(anchor=tk.W)
         entries["insert_batch_size"] = batch_entry

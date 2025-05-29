@@ -379,9 +379,6 @@ class SQLTableBuilder:
         main_frame = tk.Frame(self.master, padx=20, pady=20)
         main_frame.pack(expand=True, fill="both")
        
-        # Heading
-        tk.Label(main_frame, text="SQL Table Builder Pro", font=("Arial", 16, "bold")).pack(anchor="w", pady=(0, 10))
-
         # File selection group
         file_group = tk.LabelFrame(main_frame, text="Select Source File", padx=10, pady=10)
         file_group.pack(fill="x", pady=5)

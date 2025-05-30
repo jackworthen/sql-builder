@@ -60,6 +60,23 @@ class ConfigManager:
         except Exception as e:
             print(f"Error saving config: {e}")
 
+    def setup_button_styles(self):
+        """Configure button styles with light blue theme"""
+        style = ttk.Style()
+        
+        # Configure light blue button style
+        style.configure('LightBlue.TButton',
+                       background='#ADD8E6',  # Light blue color
+                       foreground='black',
+                       padding=(15, 8),
+                       relief='raised',
+                       borderwidth=1)
+        
+        # Configure hover effect
+        style.map('LightBlue.TButton',
+                 background=[('active', '#87CEEB'),  # Slightly darker blue on hover
+                            ('pressed', '#87CEFA')])  # Sky blue when pressed
+
     def open_settings_window(self, master, on_save_callback=None):
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
@@ -73,6 +90,9 @@ class ConfigManager:
         
         # Configure window style
         window.configure(bg='#f0f0f0')
+        
+        # Setup button styling
+        self.setup_button_styles()
         
         # Create main frame with padding
         main_frame = ttk.Frame(window, padding="20")
@@ -107,10 +127,6 @@ class ConfigManager:
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
         
-        # Style the buttons
-        style = ttk.Style()
-        style.configure('Action.TButton', padding=(15, 8))
-        
         # Create button container centered in the frame
         button_container = ttk.Frame(button_frame)
         button_container.pack(anchor=tk.CENTER)
@@ -119,7 +135,7 @@ class ConfigManager:
         cancel_btn = ttk.Button(
             button_container, 
             text="Cancel", 
-            style='Action.TButton',
+            style='LightBlue.TButton',  # Apply light blue style
             command=window.destroy
         )
         cancel_btn.pack(side=tk.LEFT, padx=(0, 15))
@@ -128,7 +144,7 @@ class ConfigManager:
         save_btn = ttk.Button(
             button_container, 
             text="Save Settings", 
-            style='Action.TButton',
+            style='LightBlue.TButton',  # Apply light blue style
             command=lambda: self._save_changes(entries, window, on_save_callback)
         )
         save_btn.pack(side=tk.LEFT)
@@ -148,9 +164,9 @@ class ConfigManager:
         db_frame.pack(fill=tk.X, pady=(0, 10))
         
         ttk.Label(db_frame, text="Database Name:").pack(anchor=tk.W)
-        db_entry = ttk.Entry(db_frame, width=40)
+        db_entry = ttk.Entry(db_frame, width=30)  # Changed from width=40 to width=20
         db_entry.insert(0, str(self.config.get("default_database", "")))
-        db_entry.pack(fill=tk.X, pady=(5, 0))
+        db_entry.pack(anchor=tk.W, pady=(5, 0))  # Changed from fill=tk.X to anchor=tk.W
         entries["default_database"] = db_entry
         
         # Default Schema
@@ -158,9 +174,9 @@ class ConfigManager:
         schema_frame.pack(fill=tk.X, pady=(0, 10))
         
         ttk.Label(schema_frame, text="Schema Name:").pack(anchor=tk.W)
-        schema_entry = ttk.Entry(schema_frame, width=40)
+        schema_entry = ttk.Entry(schema_frame, width=30)  # Changed from width=40 to width=20
         schema_entry.insert(0, str(self.config.get("default_schema", "dbo")))
-        schema_entry.pack(fill=tk.X, pady=(5, 0))
+        schema_entry.pack(anchor=tk.W, pady=(5, 0))  # Changed from fill=tk.X to anchor=tk.W
         entries["default_schema"] = schema_entry
 
     def _create_processing_tab(self, parent, entries):

@@ -414,9 +414,7 @@ class SQLTableBuilder:
         
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0, **safe_menu_opts)
-        help_menu.add_command(label="📘 Documentation", command=self.show_help)
-        help_menu.add_separator() 
-        help_menu.add_command(label="🛈 About", command=self.show_about)
+        help_menu.add_command(label="📘 Documentation", command=self.open_github_repository)
         menubar.add_cascade(label="Help", menu=help_menu)
 
         main_frame = tk.Frame(self.master, padx=20, pady=20)
@@ -1185,30 +1183,13 @@ class SQLTableBuilder:
         except Exception:
             pass
 
-    def show_help(self):
+    def open_github_repository(self):
+        """Open the GitHub repository in the default web browser"""
         import webbrowser
-        import os
-        import sys
         try:
-            if getattr(sys, 'frozen', False):
-                base_path = sys._MEIPASS
-            else:
-                base_path = os.path.dirname(os.path.abspath(__file__))
-
-            help_file_path = os.path.join(base_path, "help.html")
-
-            if not os.path.isfile(help_file_path):
-                raise FileNotFoundError(f"File not found: {help_file_path}")
-
-            webbrowser.open(f"file://{help_file_path}")
+            webbrowser.open("https://github.com/jackworthen/sql-builder")
         except Exception as e:
-            messagebox.showerror("Error", f"Could not open help file: {e}")
-
-    def show_about(self):
-        messagebox.showinfo(
-            "About",
-            "SQL Table Builder Pro\n\nVersion: 1.5.0\nBuild Date: 2025-05-27\n\nOptimizations:\n• Intelligent file caching\n• Chunked processing for large files\n• Optimized type inference\n• Progressive loading with progress dialogs\n\nDeveloped by Jack Worthen"
-        )
+            messagebox.showerror("Error", f"Could not open GitHub repository: {e}")
 
     def add_new_column_row(self):
         if self.additional_column_count >= self.max_additional_columns:

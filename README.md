@@ -1,172 +1,193 @@
-# SQL Table Builder Pro
+# 🚀 SQL Table Builder Pro
 
-A powerful, user-friendly desktop application that automatically generates SQL CREATE TABLE and INSERT statements from CSV and other delimited data files. Built with Python and Tkinter, this tool streamlines the process of converting data files into SQL scripts for database operations.
+**🎯 Transform your data files into SQL magic with just a few clicks!**
 
-## ✨ Features
+*Created by [Jack Worthen](https://github.com/jackworthen)*
 
-### Core Functionality
-- **Multi-format Support**: Works with CSV, TXT, DAT, and other delimited files
-- **Intelligent Type Inference**: Automatically detects appropriate SQL data types from your data
-- **Flexible Schema Configuration**: Customize database, schema, and table names
-- **Primary Key Support**: Add INT IDENTITY or UNIQUEIDENTIFIER primary keys
-- **Column Customization**: Rename columns and adjust data types as needed
+---
 
-### Advanced Capabilities
-- **Large File Optimization**: Efficiently handles large datasets with chunked processing
-- **Batch INSERT Generation**: Create batched INSERT statements for better performance
-- **Data Preview**: Preview your data with adjustable sample percentages
-- **Smart Caching**: Intelligent file caching to avoid redundant processing
-- **Column Formatting**: Apply naming conventions (CamelCase, snake_case, etc.)
-- **Progress Tracking**: Real-time progress dialogs for long operations
+## 🌟 What is SQL Table Builder Pro?
 
-### SQL Generation Options
-- CREATE TABLE statements with proper constraints
-- INSERT INTO statements (single or batched)
-- TRUNCATE TABLE options for data replacement
-- Configurable batch sizes for optimal performance
-- Support for NULL/NOT NULL constraints
+SQL Table Builder Pro is a powerful, user-friendly desktop application that transforms your messy data files into pristine SQL scripts faster than you can say "SELECT * FROM awesome_table". Whether you're dealing with tiny datasets or massive files that make your computer sweat, this tool has got your back!
 
-## 🚀 Getting Started
+## 🎮 Features That'll Make You Smile
 
-### Prerequisites
-- Python 3.7 or higher
-- tkinter (usually included with Python)
+### 🧠 **Smart Data Type Inference**
+- Automatically detects data types from your files
+- Supports INT, FLOAT, DATETIME, VARCHAR, and more
+- Customizable type inference with statistical sampling
 
-### Installation
+### ⚡ **Lightning-Fast Performance**
+- **Chunked Processing**: Handle files with millions of rows without breaking a sweat
+- **Intelligent Caching**: Loads data once, uses it everywhere
+- **Progressive Loading**: See your data while it's still loading
 
-1. **Clone the repository:**
+### 🎨 **Beautiful & Intuitive Interface**
+- Clean, modern GUI that doesn't hurt your eyes
+- Real-time data preview
+- Progress dialogs for long operations
+- Light blue theme that's easy on the eyes
+
+### 🛠️ **Powerful Customization**
+- **Column Naming Conventions**: CamelCase, snake_case, UPPERCASE, lowercase
+- **Primary Key Support**: INT IDENTITY and UNIQUEIDENTIFIER options
+- **Batch INSERT Statements**: Configurable batch sizes for optimal performance
+- **Schema & Database Support**: Full SQL Server compatibility
+
+### 📁 **File Format Support**
+- CSV files
+- Tab-delimited files
+- Custom delimiters (|, ;, :, ^, and more!)
+- Large file optimization (50,000+ rows)
+
+---
+
+## 🚀 Quick Start
+
+### 📋 Prerequisites
+
+```bash
+Python 3.8+
+tkinter (usually comes with Python)
+```
+
+### 💻 Installation
+
+1. **Clone this repo:**
    ```bash
-   git clone https://github.com/jackworthen/sql-table-builder-pro.git
-   cd sql-table-builder-pro
+   git clone https://github.com/jackworthen/sql-builder.git
+   cd sql-builder
    ```
 
-2. **Run the application:**
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Launch the magic:**
    ```bash
    python sqlbuilder.py
    ```
 
-### Quick Start
+### 🎯 Usage in 3 Easy Steps
 
-1. **Select Your File**: Click "Browse" to select your CSV or delimited data file
-2. **Configure Delimiter**: The application will auto-detect the delimiter, or set it manually
-3. **Preview Data**: Use the "Show" button to preview your data
-4. **Configure Table**: Set database, schema, and table names
-5. **Customize Columns**: Adjust column names and data types as needed
-6. **Generate Scripts**: Choose CREATE and/or INSERT options and save your SQL files
+1. **📂 Select Your Data File**
+   - Click "Browse" and select your CSV/TXT file
+   - Watch as the delimiter is automatically detected
+   - Preview your data with adjustable sample percentage
 
-## 🛠️ Configuration
+2. **⚙️ Configure Your Table**
+   - Set database and schema names
+   - Let the smart type inference do its magic, or customize manually
+   - Choose primary keys and configure options
 
-### Settings Panel
-Access comprehensive settings through **Edit > Settings**:
-
-#### Database Configuration
-- Default database name
-- Default schema (default: "dbo")
-
-#### Data Processing
-- Maximum additional columns
-- Default preview percentage
-- Sample percentage for analysis
-- Automatic type inference toggle
-
-#### SQL Generation
-- Include CREATE TABLE statements
-- Include INSERT statements
-- Batch INSERT options
-
-#### Performance
-- Insert batch size (default: 5000 rows)
-- Optimized processing for large files
-
-## 📁 File Structure
-
-```
-sql-table-builder-pro/
-├── sqlbuilder.py          # Main application file
-├── config_manager.py      # Configuration management
-├── sqlbuilder_icon.ico    # Application icon
-├── help.html             # Help documentation
-└── README.md             # This file
-```
-
-## 🔧 Technical Details
-
-### Architecture
-- **DataCache Class**: Efficient caching system for large file handling
-- **OptimizedTypeInferrer**: Statistical sampling for accurate type detection
-- **ProgressWindow**: User-friendly progress tracking for long operations
-- **ThreadPoolExecutor**: Background processing for responsive UI
-
-### Performance Optimizations
-- **Chunked Reading**: Process large files in manageable chunks
-- **Smart Sampling**: Use statistical sampling for type inference
-- **Regex Compilation**: Pre-compiled patterns for faster data analysis
-- **Memory Management**: Efficient memory usage for large datasets
-
-### Supported Data Types
-- BIGINT, INT, SMALLINT, TINYINT
-- FLOAT, REAL, DECIMAL, NUMERIC
-- NVARCHAR (various sizes), VARCHAR, CHAR
-- DATETIME, DATETIME2, DATE, TIME
-- BIT (for boolean values)
-- UNIQUEIDENTIFIER
-- And more...
-
-## 🎯 Use Cases
-
-### Database Migration
-Convert legacy data files to modern SQL database formats.
-
-### Data Import
-Quickly generate INSERT statements for bulk data loading.
-
-### Schema Generation
-Create table schemas from sample data files.
-
-### Development & Testing
-Generate test data scripts for development environments.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
-
-### Development Setup
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🐛 Bug Reports & Feature Requests
-
-Please use the [GitHub Issues](https://github.com/jackworthen/sql-table-builder-pro/issues) page to report bugs or request new features.
-
-## 📞 Support
-
-If you encounter any issues or need help:
-- Check the built-in help documentation (**Help > Documentation**)
-- Review the [Issues](https://github.com/jackworthen/sql-table-builder-pro/issues) page
-- Create a new issue with detailed information about your problem
-
-## 🎉 Acknowledgments
-
-- Built with Python and Tkinter for cross-platform compatibility
-- Inspired by the need for efficient data-to-SQL conversion tools
-- Thanks to the Python community for excellent libraries and documentation
-
-## 📈 Version History
-
-### v1.5.0 (2025-05-27)
-- ✅ Intelligent file caching system
-- ✅ Chunked processing for large files
-- ✅ Optimized type inference with statistical sampling
-- ✅ Progressive loading with progress dialogs
-- ✅ Enhanced performance and memory management
+3. **💾 Generate SQL Scripts**
+   - CREATE TABLE statements
+   - INSERT INTO statements (with optional batching)
+   - Save and use in your favorite SQL environment!
 
 ---
 
-**Developed by Jack Worthen** | [Report Issues](https://github.com/jackworthen/sql-table-builder-pro/issues) | [Contribute](https://github.com/jackworthen/sql-table-builder-pro/pulls)
+## 🔧 Advanced Features
+
+### 🎛️ Configuration Options
+
+| Feature | Description |
+|---------|-------------|
+| **Batch INSERT** | Configurable batch sizes (default: 500 rows) |
+| **Large File Mode** | Automatic optimization for 50,000+ row files |
+| **Type Inference** | Statistical sampling with customizable percentage |
+| **TRUNCATE Option** | Optional table truncation before INSERT |
+| **Multi-threading** | Background processing for smooth UI experience |
+
+### 🎨 Column Naming Conventions
+
+Transform your column names instantly:
+
+```
+Original: "User Name"
+CamelCase: UserName
+snake_case: user_name
+UPPERCASE: USERNAME
+lowercase: username
+```
+
+### ⚡ Performance Optimization
+
+- **Smart Caching**: Files are loaded once and cached for multiple operations
+- **Chunked Reading**: Large files are processed in manageable chunks
+- **Asynchronous Processing**: UI remains responsive during long operations
+- **Memory Efficient**: Optimized for minimal memory footprint
+
+---
+
+## 🤝 Contributing
+
+We love contributions! Here's how you can help make SQL Table Builder Pro even more awesome:
+
+### 🐛 Found a Bug?
+1. Check if it's already reported in [Issues](https://github.com/jackworthen/sql-builder/issues)
+2. If not, create a new issue with:
+   - Clear description
+   - Steps to reproduce
+   - Your environment details
+
+---
+
+## 📝 Example Usage
+
+### Input CSV:
+```csv
+user_id,user_name,email,created_date,is_active
+1,John Doe,john@email.com,2023-01-15,true
+2,Jane Smith,jane@email.com,2023-01-16,false
+```
+
+### Generated CREATE TABLE:
+```sql
+CREATE TABLE [dbo].[users] (
+    [user_id] INT NOT NULL,
+    [user_name] NVARCHAR(50) NOT NULL,
+    [email] NVARCHAR(255) NOT NULL,
+    [created_date] DATETIME NOT NULL,
+    [is_active] BIT NOT NULL,
+    CONSTRAINT PK_users PRIMARY KEY ([user_id])
+);
+```
+
+### Generated INSERT statements:
+```sql
+INSERT INTO [dbo].[users] ([user_id], [user_name], [email], [created_date], [is_active])
+VALUES
+    (1, 'John Doe', 'john@email.com', '2023-01-15', 1),
+    (2, 'Jane Smith', 'jane@email.com', '2023-01-16', 0);
+```
+
+---
+
+## 🏗️ Project Structure
+
+```
+sql-builder/
+├── 📄 sqlbuilder.py          # Main application file
+├── ⚙️ config_manager.py      # Configuration management
+├── 🎨 sqlbuilder_icon.ico    # Application icon
+├── 📚 README.md              # This awesome file!
+├── 📋 requirements.txt       # Python dependencies
+└── 🧪 tests/                 # Test files (coming soon!)
+
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**⭐ If this project helped you, please consider giving it a star! ⭐**
+
+*Developed by Jack Worthen [Jack Worthen](https://github.com/jackworthen)*
+
+---
+
+**Happy SQL Building! 🎉**

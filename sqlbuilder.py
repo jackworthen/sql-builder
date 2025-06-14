@@ -402,20 +402,30 @@ class SQLTableBuilder:
 
         # File menu
         file_menu = tk.Menu(menubar, tearoff=0, **safe_menu_opts)
-        file_menu.add_command(label="🗁 Open", command=self.browse_file)
+        file_menu.add_command(label="Open", command=self.browse_file, accelerator="Ctrl+O")
         file_menu.add_separator() 
-        file_menu.add_command(label="⏻ Exit", command=self.master.quit)
+        file_menu.add_command(label="Exit", command=self.master.quit, accelerator="Ctrl+E")
         menubar.add_cascade(label="File", menu=file_menu)
         
         # Edit menu
         edit_menu = tk.Menu(menubar, tearoff=0, **safe_menu_opts)
-        edit_menu.add_command(label="🔧 Settings", command=lambda: self.config_mgr.open_settings_window(self.master, self.apply_config_settings))
+        edit_menu.add_command(label="Settings", command=lambda: self.config_mgr.open_settings_window(self.master, self.apply_config_settings), accelerator="Ctrl+S")
         menubar.add_cascade(label="Edit", menu=edit_menu)
         
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0, **safe_menu_opts)
-        help_menu.add_command(label="📘 Documentation", command=self.open_github_repository)
+        help_menu.add_command(label="Documentation", command=self.open_github_repository, accelerator="Ctrl+D")
         menubar.add_cascade(label="Help", menu=help_menu)
+
+        # Bind keyboard shortcuts
+        self.master.bind_all('<Control-o>', lambda e: self.browse_file())
+        self.master.bind_all('<Control-O>', lambda e: self.browse_file())
+        self.master.bind_all('<Control-e>', lambda e: self.master.quit())
+        self.master.bind_all('<Control-E>', lambda e: self.master.quit())
+        self.master.bind_all('<Control-s>', lambda e: self.config_mgr.open_settings_window(self.master, self.apply_config_settings))
+        self.master.bind_all('<Control-S>', lambda e: self.config_mgr.open_settings_window(self.master, self.apply_config_settings))
+        self.master.bind_all('<Control-d>', lambda e: self.open_github_repository())
+        self.master.bind_all('<Control-D>', lambda e: self.open_github_repository())
 
         main_frame = tk.Frame(self.master, padx=20, pady=20)
         main_frame.pack(expand=True, fill="both")

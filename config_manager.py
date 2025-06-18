@@ -81,7 +81,7 @@ class ConfigManager:
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
         window.title("SQL Table Builder Pro - Settings")
-        window.geometry("500x500")
+        window.geometry("420x500")
         window.resizable(False, False)
         
         # Center the window

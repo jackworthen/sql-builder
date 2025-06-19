@@ -596,7 +596,7 @@ class SQLTableBuilder:
         self.add_column_button.pack(side="left", padx=10)
         self.reset_button = ttk.Button(options_frame, text="Reset Data Types", 
                                       style='LightBlue.TButton',
-                                      command=self.set_inferred_types_async, 
+                                      command=self.reset_data_types_immediately, 
                                       state="disabled")
         self.reset_button.pack(side="left", padx=5)
         
@@ -973,6 +973,31 @@ class SQLTableBuilder:
         else:
             # Run directly for small files
             generate_task()
+
+    def reset_data_types_immediately(self):
+        """Reset data types immediately without progress window"""
+        if not self.data_cache.is_loaded:
+            return
+            
+        try:
+            # Use cached sample data for type inference
+            inferred_types = self.type_inferrer.infer_column_types(
+                self.data_cache.sample_rows, 
+                self.headers
+            )
+            
+            # Update UI immediately
+            for i, inferred_type in enumerate(inferred_types):
+                if i < len(self.type_entries):
+                    combo = self.type_entries[i]
+                    combo.delete(0, "end")
+                    combo.insert(0, inferred_type)
+            
+            # Keep reset button enabled for future use
+            self.reset_button.config(state="normal")
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to reset data types: {e}")
 
     def set_inferred_types_async(self):
         """Asynchronously infer types with progress indication"""

@@ -315,6 +315,10 @@ class SQLTableBuilder:
         self.include_create_script = tk.BooleanVar(value=True)
         self.include_insert_script = tk.BooleanVar(value=True)
         
+        # Track if types have been manually changed
+        self.types_manually_changed = False
+        self.initial_type_inference_done = False
+        
         # Initialize optimized components
         self.data_cache = DataCache()
         self.type_inferrer = OptimizedTypeInferrer()
@@ -538,9 +542,11 @@ class SQLTableBuilder:
         
         # Run file loading in background thread
         self.executor.submit(load_file_task)
-    
+      
     def build_column_type_screen(self):
         self.additional_column_count = 0
+        self.types_manually_changed = False  # Reset manual change tracking
+        self.initial_type_inference_done = False  # Reset initial inference tracking
         self.master.geometry("565x800")
         for widget in self.master.winfo_children():
             widget.destroy()
@@ -621,7 +627,7 @@ class SQLTableBuilder:
         column_frame = tk.LabelFrame(self.master, text="Define Table Columns", padx=10, pady=10)
         column_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
-        canvas = tk.Canvas(column_frame)
+        canvas = tk.Canvas(column_frame, highlightthickness=0)  # Remove focus highlight
         scrollbar = tk.Scrollbar(column_frame, orient="vertical", command=canvas.yview)
         self.scrollable_frame = tk.Frame(canvas)
 
@@ -632,6 +638,9 @@ class SQLTableBuilder:
 
         canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Disable canvas focus to prevent bold frame highlighting
+        canvas.bind('<Button-1>', lambda e: self.master.focus_set())
 
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
@@ -666,7 +675,9 @@ class SQLTableBuilder:
 
             type_combo = ttk.Combobox(row, width=27, values=self.sql_data_types)
             type_combo.pack(side="left", padx=5)
-            type_combo.bind("<<ComboboxSelected>>", lambda e: self.enable_reset_button())
+            # Bind both selection and key events to detect manual changes
+            type_combo.bind("<<ComboboxSelected>>", self.on_type_changed)
+            type_combo.bind("<KeyRelease>", self.on_type_changed)
 
             null_checkbox = tk.Checkbutton(row, variable=null_var, command=lambda idx=index: self.update_null_states(idx))
             null_checkbox.pack(side="left")
@@ -714,6 +725,12 @@ class SQLTableBuilder:
                   style='LightBlue.TButton',
                   width=15, 
                   command=self.master.quit).pack(side="left", padx=10)
+
+    def on_type_changed(self, event=None):
+        """Handle when a data type is manually changed"""
+        # Enable reset button whenever a type is changed manually
+        self.types_manually_changed = True
+        self.enable_reset_button()
         
     def handle_generate_scripts(self):
         if self.include_create_script.get():
@@ -997,7 +1014,14 @@ class SQLTableBuilder:
                                 combo.delete(0, "end")
                                 combo.insert(0, inferred_type)
                         
-                        self.reset_button.config(state="disabled")
+                        # Reset button state properly
+                        if self.types_manually_changed:
+                            # Only disable if this was a user-initiated reset
+                            self.reset_button.config(state="disabled")
+                            self.types_manually_changed = False
+                        
+                        self.initial_type_inference_done = True
+                        
                         progress.close()
                         
                     except Exception as e:
@@ -1229,7 +1253,9 @@ class SQLTableBuilder:
 
         type_combo = ttk.Combobox(row, width=27, values=self.sql_data_types)
         type_combo.pack(side="left", padx=5)
-        type_combo.bind("<<ComboboxSelected>>", lambda e: self.enable_reset_button())
+        # Bind both selection and key events to detect manual changes
+        type_combo.bind("<<ComboboxSelected>>", self.on_type_changed)
+        type_combo.bind("<KeyRelease>", self.on_type_changed)
 
         null_checkbox = tk.Checkbutton(row, variable=null_var)
         null_checkbox.pack(side="left")

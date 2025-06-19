@@ -404,7 +404,7 @@ class SQLTableBuilder:
         file_menu = tk.Menu(menubar, tearoff=0, **safe_menu_opts)
         file_menu.add_command(label="Open", command=self.browse_file, accelerator="Ctrl+O")
         file_menu.add_separator() 
-        file_menu.add_command(label="Exit", command=self.master.quit, accelerator="Ctrl+E")
+        file_menu.add_command(label="Exit", command=self.safe_exit, accelerator="Ctrl+E")
         menubar.add_cascade(label="File", menu=file_menu)
         
         # Edit menu
@@ -420,8 +420,8 @@ class SQLTableBuilder:
         # Bind keyboard shortcuts
         self.master.bind_all('<Control-o>', lambda e: self.browse_file())
         self.master.bind_all('<Control-O>', lambda e: self.browse_file())
-        self.master.bind_all('<Control-e>', lambda e: self.master.quit())
-        self.master.bind_all('<Control-E>', lambda e: self.master.quit())
+        self.master.bind_all('<Control-e>', lambda e: self.safe_exit())
+        self.master.bind_all('<Control-E>', lambda e: self.safe_exit())
         self.master.bind_all('<Control-s>', lambda e: self.config_mgr.open_settings_window(self.master, self.apply_config_settings))
         self.master.bind_all('<Control-S>', lambda e: self.config_mgr.open_settings_window(self.master, self.apply_config_settings))
         self.master.bind_all('<Control-d>', lambda e: self.open_github_repository())
@@ -720,7 +720,7 @@ class SQLTableBuilder:
         ttk.Button(back_frame, text="Exit", 
                   style='LightBlue.TButton',
                   width=15, 
-                  command=self.master.quit).pack(side="left", padx=10)
+                  command=self.safe_exit).pack(side="left", padx=10)
 
     def handle_generate_scripts(self):
         if self.include_create_script.get():
@@ -1292,11 +1292,24 @@ class SQLTableBuilder:
             pk_cb.config(command=lambda i=idx: self.update_pk_states(i))
             null_cb.config(command=lambda i=idx: self.update_null_states(i))
 
+    def safe_exit(self):
+        """Safely exit the application by shutting down background threads"""
+        try:
+            # Shutdown the executor and wait briefly for threads to complete
+            self.executor.shutdown(wait=False)
+            # Force quit immediately without waiting for all threads
+            self.master.quit()
+            self.master.destroy()
+        except Exception:
+            # If anything goes wrong, force quit anyway
+            self.master.quit()
+
     def __del__(self):
         """Cleanup resources"""
         try:
-            self.executor.shutdown(wait=False)
-        except:
+            if hasattr(self, 'executor'):
+                self.executor.shutdown(wait=False)
+        except Exception:
             pass
 
 if __name__ == "__main__":

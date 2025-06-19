@@ -315,10 +315,6 @@ class SQLTableBuilder:
         self.include_create_script = tk.BooleanVar(value=True)
         self.include_insert_script = tk.BooleanVar(value=True)
         
-        # Track if types have been manually changed
-        self.types_manually_changed = False
-        self.initial_type_inference_done = False
-        
         # Initialize optimized components
         self.data_cache = DataCache()
         self.type_inferrer = OptimizedTypeInferrer()
@@ -545,8 +541,6 @@ class SQLTableBuilder:
       
     def build_column_type_screen(self):
         self.additional_column_count = 0
-        self.types_manually_changed = False  # Reset manual change tracking
-        self.initial_type_inference_done = False  # Reset initial inference tracking
         self.master.geometry("565x800")
         for widget in self.master.winfo_children():
             widget.destroy()
@@ -675,9 +669,11 @@ class SQLTableBuilder:
 
             type_combo = ttk.Combobox(row, width=27, values=self.sql_data_types)
             type_combo.pack(side="left", padx=5)
-            # Bind both selection and key events to detect manual changes
-            type_combo.bind("<<ComboboxSelected>>", self.on_type_changed)
-            type_combo.bind("<KeyRelease>", self.on_type_changed)
+            
+            # Simple event bindings that actually work
+            type_combo.bind("<<ComboboxSelected>>", lambda e: self.enable_reset_button())
+            type_combo.bind("<KeyRelease>", lambda e: self.enable_reset_button())
+            type_combo.bind("<Button-1>", lambda e: self.enable_reset_button())
 
             null_checkbox = tk.Checkbutton(row, variable=null_var, command=lambda idx=index: self.update_null_states(idx))
             null_checkbox.pack(side="left")
@@ -726,12 +722,6 @@ class SQLTableBuilder:
                   width=15, 
                   command=self.master.quit).pack(side="left", padx=10)
 
-    def on_type_changed(self, event=None):
-        """Handle when a data type is manually changed"""
-        # Enable reset button whenever a type is changed manually
-        self.types_manually_changed = True
-        self.enable_reset_button()
-        
     def handle_generate_scripts(self):
         if self.include_create_script.get():
             self.generate_sql_file()
@@ -768,7 +758,8 @@ class SQLTableBuilder:
                         current_entry.delete(0, tk.END)
 
     def enable_reset_button(self):
-        if self.reset_button['state'] == "disabled":
+        """Enable the reset button"""
+        if hasattr(self, 'reset_button') and self.reset_button.winfo_exists():
             self.reset_button.config(state="normal")
 
     def update_truncate_color(self):
@@ -1014,13 +1005,11 @@ class SQLTableBuilder:
                                 combo.delete(0, "end")
                                 combo.insert(0, inferred_type)
                         
-                        # Reset button state properly
-                        if self.types_manually_changed:
-                            # Only disable if this was a user-initiated reset
-                            self.reset_button.config(state="disabled")
-                            self.types_manually_changed = False
-                        
-                        self.initial_type_inference_done = True
+                        # Enable the reset button after type inference (initial or user-initiated)
+                        self.reset_button.config(state="normal")
+                        if not hasattr(self, 'initial_type_inference_done'):
+                            self.initial_type_inference_done = True
+                        self.reset_button.config(state="disabled")
                         
                         progress.close()
                         
@@ -1253,9 +1242,11 @@ class SQLTableBuilder:
 
         type_combo = ttk.Combobox(row, width=27, values=self.sql_data_types)
         type_combo.pack(side="left", padx=5)
-        # Bind both selection and key events to detect manual changes
-        type_combo.bind("<<ComboboxSelected>>", self.on_type_changed)
-        type_combo.bind("<KeyRelease>", self.on_type_changed)
+        
+        # Simple event bindings that actually work
+        type_combo.bind("<<ComboboxSelected>>", lambda e: self.enable_reset_button())
+        type_combo.bind("<KeyRelease>", lambda e: self.enable_reset_button())
+        type_combo.bind("<Button-1>", lambda e: self.enable_reset_button())
 
         null_checkbox = tk.Checkbutton(row, variable=null_var)
         null_checkbox.pack(side="left")

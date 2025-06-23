@@ -81,7 +81,7 @@ class ConfigManager:
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
         window.title("SQL Table Builder Pro - Settings")
-        window.geometry("420x500")
+        window.geometry("350x500")
         window.resizable(False, False)
         
         # Center the window
@@ -198,7 +198,7 @@ class ConfigManager:
         
         # Type Inference
         infer_var = tk.BooleanVar(value=self.config.get("default_infer_types", True))
-        infer_cb = ttk.Checkbutton(col_frame, text="Automatically infer column data types", 
+        infer_cb = ttk.Checkbutton(col_frame, text="Infer Data Types", 
                                   variable=infer_var)
         infer_cb.pack(anchor=tk.W)
         entries["default_infer_types"] = infer_var
@@ -257,7 +257,6 @@ class ConfigManager:
         
         # Add description
         desc_label = ttk.Label(insert_frame, 
-                              text="Higher values improve performance but use more memory",
                               font=('TkDefaultFont', 8),
                               foreground='gray')
         desc_label.pack(anchor=tk.W, pady=(0, 10))

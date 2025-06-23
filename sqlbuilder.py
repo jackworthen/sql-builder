@@ -385,7 +385,7 @@ class SQLTableBuilder:
         self.delimiter.set("")  # Clear the delimiter field
         self.file_path.set("")  # Clear previously selected file
         self.data_cache.clear()  # Clear cached data
-        self.master.geometry("750x490")
+        self.master.geometry("950x600")
         for widget in self.master.winfo_children():
             widget.destroy()
 

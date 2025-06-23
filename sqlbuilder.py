@@ -1,8 +1,3 @@
-# SQL Table Builder Pro
-# Created By: Jack Worthen
-# Description: Reads a data file and creates SQL scripts for creating a table and inserting data into table.
-# Optimized with caching, chunked reading, and improved type inference
-
 from config_manager import ConfigManager
 import re
 from datetime import datetime

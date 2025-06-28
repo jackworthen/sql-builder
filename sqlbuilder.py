@@ -740,7 +740,7 @@ class SQLTableBuilder:
         self.include_insert_script.trace_add("write", self.update_truncate_enable_state)
         self.batch_insert_check = tk.Checkbutton(checkbox_row, text=f"Batch INSERT ({self.insert_batch_size})", variable=self.batch_insert_var)
         self.batch_insert_check.pack(side="left", padx=5)
-        ttk.Button(checkbox_row, text="Save Scripts", 
+        ttk.Button(checkbox_row, text="Save", 
                   style='Success.TButton',
                   width=9, 
                   command=self.handle_generate_scripts).pack(side="right", padx=10)

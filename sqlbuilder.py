@@ -670,17 +670,6 @@ class SQLTableBuilder:
             options_frame, text="UNIQUEIDENTIFIER", variable=self.use_guid, command=self.update_identity_guid_states
         )
         self.guid_checkbox.pack(side="left", padx=5)
-
-        # Add Column and Reset buttons inline
-        self.add_column_button = ttk.Button(options_frame, text="Add Column", 
-                                           style='Small.TButton',
-                                           command=self.add_new_column_row)
-        self.add_column_button.pack(side="left", padx=10)
-        self.reset_button = ttk.Button(options_frame, text="Reset Types", 
-                                      style='Small.TButton',
-                                      command=self.reset_data_types_immediately, 
-                                      state="disabled")
-        self.reset_button.pack(side="left", padx=5)
         
         # Row for renaming dropdown and set button
         rename_frame = tk.Frame(settings_frame)
@@ -692,7 +681,13 @@ class SQLTableBuilder:
         ttk.Button(rename_frame, text="Set", 
                   style='Small.TButton',
                   width=4, 
-                  command=self.apply_column_naming_convention).pack(side="left", padx=5)    
+                  command=self.apply_column_naming_convention).pack(side="left", padx=5)
+        
+        self.reset_button = ttk.Button(rename_frame, text="Reset Types", 
+                                      style='Small.TButton',
+                                      command=self.reset_data_types_immediately, 
+                                      state="disabled")
+        self.reset_button.pack(side="left", padx=5)    
         
         # Disable checkboxes initially
         self.identity_checkbox.config(state="disabled")
@@ -702,6 +697,21 @@ class SQLTableBuilder:
         # === COLUMN DEFINITION SECTION ===
         column_frame = tk.LabelFrame(self.master, text="Define Table Columns", padx=10, pady=10)
         column_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        # Add Column and Remove Column buttons at the top of the frame
+        column_buttons_frame = tk.Frame(column_frame)
+        column_buttons_frame.pack(fill="x", pady=(0, 10))
+        
+        self.add_column_button = ttk.Button(column_buttons_frame, text="Add Column", 
+                                           style='Small.TButton',
+                                           command=self.add_new_column_row)
+        self.add_column_button.pack(side="left", padx=(0, 5))
+        
+        self.remove_column_button = ttk.Button(column_buttons_frame, text="Remove Column", 
+                                              style='Small.TButton',
+                                              command=self.remove_last_column,
+                                              state="disabled")
+        self.remove_column_button.pack(side="left")
 
         canvas = tk.Canvas(column_frame, highlightthickness=0)  # Remove focus highlight
         scrollbar = tk.Scrollbar(column_frame, orient="vertical", command=canvas.yview)
@@ -1080,12 +1090,19 @@ class SQLTableBuilder:
                 self.headers
             )
             
-            # Update UI immediately
+            # Update UI immediately - only reset types for original columns (not added ones)
+            original_column_count = len(self.headers)
             for i, inferred_type in enumerate(inferred_types):
-                if i < len(self.type_entries):
+                if i < original_column_count and i < len(self.type_entries):
                     combo = self.type_entries[i]
                     combo.delete(0, "end")
                     combo.insert(0, inferred_type)
+            
+            # Clear added columns' data types if neither INT IDENTITY nor UNIQUEIDENTIFIER is checked
+            if not self.use_identity.get() and not self.use_guid.get():
+                for i in range(original_column_count, len(self.type_entries)):
+                    combo = self.type_entries[i]
+                    combo.delete(0, "end")
             
             # Keep reset button enabled for future use
             self.reset_button.config(state="normal")
@@ -1118,11 +1135,19 @@ class SQLTableBuilder:
                 # Schedule UI update on main thread
                 def update_ui():
                     try:
+                        # Only update types for original columns (not added ones)
+                        original_column_count = len(self.headers)
                         for i, inferred_type in enumerate(inferred_types):
-                            if i < len(self.type_entries):
+                            if i < original_column_count and i < len(self.type_entries):
                                 combo = self.type_entries[i]
                                 combo.delete(0, "end")
                                 combo.insert(0, inferred_type)
+                        
+                        # Clear added columns' data types if neither INT IDENTITY nor UNIQUEIDENTIFIER is checked
+                        if not self.use_identity.get() and not self.use_guid.get():
+                            for i in range(original_column_count, len(self.type_entries)):
+                                combo = self.type_entries[i]
+                                combo.delete(0, "end")
                         
                         # Enable the reset button after type inference (initial or user-initiated)
                         self.reset_button.config(state="normal")
@@ -1470,17 +1495,13 @@ class SQLTableBuilder:
         row = tk.Frame(self.scrollable_frame)
         row.pack(fill="x", pady=1, anchor="w")
 
-        # Try to insert after header row if possible
-        children = self.scrollable_frame.winfo_children()
-        # Insert the row right after the header row for alignment
-        header_row = self.scrollable_frame.winfo_children()[0]
-        row.pack(after=header_row)
-
         pk_var = tk.BooleanVar()
         null_var = tk.BooleanVar(value=True)
 
         name_entry = tk.Entry(row, width=30)
-        pk_checkbox = tk.Checkbutton(row, variable=pk_var, command=lambda: self.update_pk_states(0))
+        # Get the correct index for the new column (append at end)
+        new_index = len(self.pk_vars)
+        pk_checkbox = tk.Checkbutton(row, variable=pk_var, command=lambda idx=new_index: self.update_pk_states(idx))
         pk_checkbox.pack(side="left")
 
         name_entry.pack(side="left")
@@ -1493,24 +1514,67 @@ class SQLTableBuilder:
         type_combo.bind("<KeyRelease>", lambda e: self.enable_reset_button())
         type_combo.bind("<Button-1>", lambda e: self.enable_reset_button())
 
-        null_checkbox = tk.Checkbutton(row, variable=null_var)
+        null_checkbox = tk.Checkbutton(row, variable=null_var, command=lambda idx=new_index: self.update_null_states(idx))
+        null_checkbox.pack(side="left")
         null_checkbox.pack(side="left")
 
-        self.pk_vars.insert(0, pk_var)
-        self.null_vars.insert(0, null_var)
-        self.pk_checkboxes.insert(0, pk_checkbox)
-        self.null_checkboxes.insert(0, null_checkbox)
-        self.column_entries.insert(0, name_entry)
-        self.type_entries.insert(0, type_combo)
+        # Append new column at the end instead of inserting at beginning
+        self.pk_vars.append(pk_var)
+        self.null_vars.append(null_var)
+        self.pk_checkboxes.append(pk_checkbox)
+        self.null_checkboxes.append(null_checkbox)
+        self.column_entries.append(name_entry)
+        self.type_entries.append(type_combo)
 
         self.additional_column_count += 1
         if self.additional_column_count >= self.max_additional_columns:
             self.add_column_button.config(state="disabled")
+        
+        # Enable the remove column button since we now have at least one added column
+        self.remove_column_button.config(state="normal")
 
-        # Update index bindings again
-        for idx, (pk_cb, null_cb) in enumerate(zip(self.pk_checkboxes, self.null_checkboxes)):
-            pk_cb.config(command=lambda i=idx: self.update_pk_states(i))
-            null_cb.config(command=lambda i=idx: self.update_null_states(i))
+    def remove_last_column(self):
+        """Remove the last added column"""
+        if self.additional_column_count <= 0:
+            return
+        
+        # Calculate the index of the last added column
+        original_column_count = len(self.headers)
+        last_column_index = len(self.column_entries) - 1
+        
+        # Only remove if the last column is an added one (not original)
+        if last_column_index >= original_column_count:
+            # Get the UI row widget to destroy it
+            # The row widget is the parent of the entry widget
+            row_widget = self.column_entries[last_column_index].master
+            
+            # Remove from all lists (last element)
+            self.column_entries.pop()
+            self.type_entries.pop()
+            self.pk_vars.pop()
+            self.pk_checkboxes.pop()
+            self.null_vars.pop()
+            self.null_checkboxes.pop()
+            
+            # Destroy the UI row
+            row_widget.destroy()
+            
+            # Update counters
+            self.additional_column_count -= 1
+            
+            # Update button states
+            if self.additional_column_count <= 0:
+                # No more added columns, disable remove button
+                self.remove_column_button.config(state="disabled")
+                # Also disable identity/guid checkboxes if no added columns
+                if not self.identity_guid_enabled:
+                    self.identity_checkbox.config(state="disabled")
+                    self.guid_checkbox.config(state="disabled")
+                    self.identity_guid_enabled = False
+            
+            # Re-enable add button if it was disabled due to max columns
+            if self.additional_column_count < self.max_additional_columns:
+                self.add_column_button.config(state="normal")
 
     def safe_exit(self):
         """Safely exit the application by shutting down background threads"""

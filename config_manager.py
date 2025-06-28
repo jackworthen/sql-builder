@@ -84,8 +84,8 @@ class ConfigManager:
     def open_settings_window(self, master, on_save_callback=None):
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
-        window.title("SQL Table Builder Pro - Settings")
-        window.geometry("350x500")
+        window.title("Settings")
+        window.geometry("350x430")
         window.resizable(False, False)
         
         # Center the window
@@ -169,20 +169,26 @@ class ConfigManager:
         db_frame = ttk.LabelFrame(parent, text="Default Database", padding="15")
         db_frame.pack(fill=tk.X, pady=(0, 10))
         
-        ttk.Label(db_frame, text="Database Name:").pack(anchor=tk.W)
-        db_entry = ttk.Entry(db_frame, width=30)  # Changed from width=40 to width=20
+        # Database Name - horizontal layout
+        db_input_frame = ttk.Frame(db_frame)
+        db_input_frame.pack(fill=tk.X)
+        ttk.Label(db_input_frame, text="Database Name:").pack(side=tk.LEFT)
+        db_entry = ttk.Entry(db_input_frame, width=25)
         db_entry.insert(0, str(self.config.get("default_database", "")))
-        db_entry.pack(anchor=tk.W, pady=(5, 0))  # Changed from fill=tk.X to anchor=tk.W
+        db_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["default_database"] = db_entry
         
         # Default Schema
         schema_frame = ttk.LabelFrame(parent, text="Default Schema", padding="15")
         schema_frame.pack(fill=tk.X, pady=(0, 10))
         
-        ttk.Label(schema_frame, text="Schema Name:").pack(anchor=tk.W)
-        schema_entry = ttk.Entry(schema_frame, width=30)  # Changed from width=40 to width=20
+        # Schema Name - horizontal layout
+        schema_input_frame = ttk.Frame(schema_frame)
+        schema_input_frame.pack(fill=tk.X)
+        ttk.Label(schema_input_frame, text="Schema Name:").pack(side=tk.LEFT)
+        schema_entry = ttk.Entry(schema_input_frame, width=25)
         schema_entry.insert(0, str(self.config.get("default_schema", "dbo")))
-        schema_entry.pack(anchor=tk.W, pady=(5, 0))  # Changed from fill=tk.X to anchor=tk.W
+        schema_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["default_schema"] = schema_entry
 
     def _create_processing_tab(self, parent, entries):
@@ -196,15 +202,18 @@ class ConfigManager:
         col_frame = ttk.LabelFrame(parent, text="Column Configuration", padding="15")
         col_frame.pack(fill=tk.X, pady=(0, 15))
         
-        ttk.Label(col_frame, text="Maximum Additional Columns:").pack(anchor=tk.W)
-        col_entry = ttk.Entry(col_frame, width=20)
+        # Maximum Additional Columns - horizontal layout
+        col_input_frame = ttk.Frame(col_frame)
+        col_input_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(col_input_frame, text="Maximum Additional Columns:").pack(side=tk.LEFT)
+        col_entry = ttk.Entry(col_input_frame, width=5)
         col_entry.insert(0, str(self.config.get("max_additional_columns", 1)))
-        col_entry.pack(anchor=tk.W, pady=(5, 10))
+        col_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["max_additional_columns"] = col_entry
         
         # Type Inference
         infer_var = tk.BooleanVar(value=self.config.get("default_infer_types", True))
-        infer_cb = ttk.Checkbutton(col_frame, text="Infer Data Types", 
+        infer_cb = ttk.Checkbutton(col_frame, text="Enable Data Type Inference", 
                                   variable=infer_var)
         infer_cb.pack(anchor=tk.W)
         entries["default_infer_types"] = infer_var
@@ -213,16 +222,22 @@ class ConfigManager:
         sample_frame = ttk.LabelFrame(parent, text="Data Sampling", padding="15")
         sample_frame.pack(fill=tk.X)
         
-        ttk.Label(sample_frame, text="Default Preview Percentage (%):").pack(anchor=tk.W)
-        preview_entry = ttk.Entry(sample_frame, width=20)
+        # Default Preview Percentage - horizontal layout
+        preview_input_frame = ttk.Frame(sample_frame)
+        preview_input_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(preview_input_frame, text="Default Preview Percentage:").pack(side=tk.LEFT)
+        preview_entry = ttk.Entry(preview_input_frame, width=5)
         preview_entry.insert(0, str(self.config.get("default_preview_percentage", 10)))
-        preview_entry.pack(anchor=tk.W, pady=(5, 10))
+        preview_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["default_preview_percentage"] = preview_entry
         
-        ttk.Label(sample_frame, text="Sample Percentage for Analysis (%):").pack(anchor=tk.W)
-        sample_entry = ttk.Entry(sample_frame, width=20)
+        # Sample Percentage for Analysis - horizontal layout
+        sample_input_frame = ttk.Frame(sample_frame)
+        sample_input_frame.pack(fill=tk.X)
+        ttk.Label(sample_input_frame, text="Sample Percentage for Analysis:").pack(side=tk.LEFT)
+        sample_entry = ttk.Entry(sample_input_frame, width=5)
         sample_entry.insert(0, str(self.config.get("sample_percentage", 15)))
-        sample_entry.pack(anchor=tk.W, pady=(5, 0))
+        sample_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["sample_percentage"] = sample_entry
 
     def _create_sql_tab(self, parent, entries):
@@ -253,23 +268,18 @@ class ConfigManager:
         insert_frame.pack(fill=tk.X)
         
         batch_var = tk.BooleanVar(value=self.config.get("default_batch_insert", False))
-        batch_cb = ttk.Checkbutton(insert_frame, text="Use batch insert statements", 
+        batch_cb = ttk.Checkbutton(insert_frame, text="Enable Batch Insert", 
                                   variable=batch_var)
         batch_cb.pack(anchor=tk.W, pady=(0, 10))
         entries["default_batch_insert"] = batch_var
         
-        # Batch Size Input (moved from Performance tab)
-        ttk.Label(insert_frame, text="Insert Batch Size (rows per batch):").pack(anchor=tk.W)
-        
-        # Add description
-        desc_label = ttk.Label(insert_frame, 
-                              font=('TkDefaultFont', 8),
-                              foreground='gray')
-        desc_label.pack(anchor=tk.W, pady=(0, 10))
-        
-        batch_entry = ttk.Entry(insert_frame, width=20)
+        # Batch Size Input - horizontal layout
+        batch_input_frame = ttk.Frame(insert_frame)
+        batch_input_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(batch_input_frame, text="Insert Batch Size:").pack(side=tk.LEFT)
+        batch_entry = ttk.Entry(batch_input_frame, width=12)
         batch_entry.insert(0, str(self.config.get("insert_batch_size", 5000)))
-        batch_entry.pack(anchor=tk.W)
+        batch_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["insert_batch_size"] = batch_entry
 
     def _save_changes(self, entries, window, on_save_callback):

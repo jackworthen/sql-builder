@@ -61,21 +61,25 @@ class ConfigManager:
             print(f"Error saving config: {e}")
 
     def setup_button_styles(self):
-        """Configure button styles with light blue theme"""
+        """Configure button styles with compact design and light blue theme"""
         style = ttk.Style()
         
-        # Configure light blue button style
+        # Configure light blue button style - smaller with black text on light blue
         style.configure('LightBlue.TButton',
-                       background='#ADD8E6',  # Light blue color
+                       background='#ADD8E6',  # Light blue
                        foreground='black',
-                       padding=(15, 8),
-                       relief='raised',
-                       borderwidth=1)
+                       padding=(6, 3),        # Reduced from (15, 8)
+                       relief='flat',         # Changed from raised to flat
+                       borderwidth=1,
+                       focuscolor='none',
+                       font=('Arial', 8))
         
-        # Configure hover effect
+        # Configure hover and pressed effects
         style.map('LightBlue.TButton',
-                 background=[('active', '#87CEEB'),  # Slightly darker blue on hover
-                            ('pressed', '#87CEFA')])  # Sky blue when pressed
+                 background=[('active', '#87CEEB'),   # Slightly darker light blue
+                            ('pressed', '#87CEFA')],  # Sky blue
+                 relief=[('pressed', 'flat'),
+                        ('!pressed', 'flat')])
 
     def open_settings_window(self, master, on_save_callback=None):
         window = tk.Toplevel(master)
@@ -131,20 +135,22 @@ class ConfigManager:
         button_container = ttk.Frame(button_frame)
         button_container.pack(anchor=tk.CENTER)
         
-        # Cancel button (left)
+        # Cancel button (left) - smaller width
         cancel_btn = ttk.Button(
             button_container, 
             text="Cancel", 
-            style='LightBlue.TButton',  # Apply light blue style
+            style='LightBlue.TButton',
+            width=8,  # Reduced from default
             command=window.destroy
         )
         cancel_btn.pack(side=tk.LEFT, padx=(0, 15))
         
-        # Save button (right)
+        # Save button (right) - smaller width
         save_btn = ttk.Button(
             button_container, 
             text="Save Settings", 
-            style='LightBlue.TButton',  # Apply light blue style
+            style='LightBlue.TButton',
+            width=12,  # Reduced from default
             command=lambda: self._save_changes(entries, window, on_save_callback)
         )
         save_btn.pack(side=tk.LEFT)

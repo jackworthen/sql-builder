@@ -109,17 +109,17 @@ class ConfigManager:
         # Dictionary to store all entry widgets
         entries = {}
         
-        # Database Configuration Tab
-        db_frame = ttk.Frame(notebook, padding="20")
-        notebook.add(db_frame, text="Database")
-        
-        self._create_database_tab(db_frame, entries)
-        
         # Data Processing Tab  
         processing_frame = ttk.Frame(notebook, padding="20")
         notebook.add(processing_frame, text="Data Processing")
         
         self._create_processing_tab(processing_frame, entries)
+        
+        # Database Configuration Tab
+        db_frame = ttk.Frame(notebook, padding="20")
+        notebook.add(db_frame, text="Database")
+        
+        self._create_database_tab(db_frame, entries)
         
         # SQL Generation Tab
         sql_frame = ttk.Frame(notebook, padding="20")

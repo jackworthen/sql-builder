@@ -493,6 +493,7 @@ class SQLTableBuilder:
         file_group = tk.LabelFrame(main_frame, text="Select Source File", padx=10, pady=10)
         file_group.pack(fill="x", pady=5)
 
+        # File path selection row
         file_frame = tk.Frame(file_group)
         file_frame.pack(fill="x", pady=5)
         file_entry = tk.Entry(file_frame, textvariable=self.file_path, width=50)
@@ -501,23 +502,31 @@ class SQLTableBuilder:
                   style='Primary.TButton',
                   command=self.browse_file).pack(side="left")
 
-        # Delimiter
+        # Delimiter and Preview controls row (combined)
         delimiter_frame = tk.Frame(file_group)
-        delimiter_frame.pack(fill="x", pady=(5, 0))
-        tk.Label(delimiter_frame, text="Delimiter:").pack(side="left")
-        delimiter_entry = tk.Entry(delimiter_frame, textvariable=self.delimiter, width=3, justify="center")
-        delimiter_entry.pack(side="left", padx=5)
-        self.infer_checkbox = tk.Checkbutton(
-            delimiter_frame, text="Infer Data Types ", variable=self.infer_types_var
-        )
-        self.infer_checkbox.pack(side="left", padx=10)
-        tk.Label(delimiter_frame, text="Preview %:").pack(side="left", padx=(10, 2))
-        tk.Entry(delimiter_frame, textvariable=self.preview_percentage_var, width=5, justify="center").pack(side="left")
-        self.show_button = ttk.Button(delimiter_frame, text="Show", 
+        delimiter_frame.pack(fill="x", pady=(10, 10))
+        
+        # Left side - Delimiter
+        tk.Label(delimiter_frame, text="Delimiter:", font=('Arial', 9)).pack(side="left")
+        delimiter_entry = tk.Entry(delimiter_frame, textvariable=self.delimiter, width=4, justify="center")
+        delimiter_entry.pack(side="left", padx=(5, 0))
+        
+        # Right side - Preview controls
+        preview_controls = tk.Frame(delimiter_frame)
+        preview_controls.pack(side="right")
+        
+        # Preview percentage with label and entry
+        tk.Label(preview_controls, text="Preview:", font=('Arial', 9)).pack(side="left")
+        preview_entry = tk.Entry(preview_controls, textvariable=self.preview_percentage_var, width=4, justify="center")
+        preview_entry.pack(side="left", padx=(5, 2))
+        tk.Label(preview_controls, text="%", font=('Arial', 9)).pack(side="left")
+        
+        # Show button
+        self.show_button = ttk.Button(preview_controls, text="Show Preview", 
                                      style='Small.TButton',
-                                     width=6, state="disabled", 
+                                     width=12, state="disabled", 
                                      command=self.on_apply_preview_percentage)
-        self.show_button.pack(side="left", padx=(5, 0))
+        self.show_button.pack(side="left", padx=(8, 0))
                 
         # Action button
         self.preview_frame = tk.LabelFrame(main_frame, text="Data Preview", padx=5, pady=5)
@@ -1219,7 +1228,7 @@ class SQLTableBuilder:
                                    font=('Arial', 12, 'bold'), bg='#F8F9FA', fg='#495057')
             message_label.pack()
             
-            instruction_label = tk.Label(no_data_frame, text="Click 'Show' to load preview", 
+            instruction_label = tk.Label(no_data_frame, text="Click 'Show Preview' to load preview", 
                                        font=('Arial', 10), bg='#F8F9FA', fg='#6C757D')
             instruction_label.pack(pady=(0, 20))
             return

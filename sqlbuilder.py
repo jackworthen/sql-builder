@@ -413,6 +413,29 @@ class SQLTableBuilder:
                                  ('pressed', '#ADD8E6')],  # Light blue
                       relief=[('pressed', 'flat'),
                              ('!pressed', 'flat')])
+
+    def setup_preview_styles(self):
+        """Setup enhanced styles for the data preview"""
+        # Configure modern Treeview styling
+        self.style.configure('Preview.Treeview',
+                            background='#FFFFFF',
+                            foreground='#2C3E50',
+                            fieldbackground='#FFFFFF',
+                            borderwidth=1,
+                            relief='solid',
+                            font=('Arial', 9))
+        
+        self.style.configure('Preview.Treeview.Heading',
+                            background='#3498DB',
+                            foreground='black',
+                            font=('Arial', 9, 'bold'),
+                            relief='flat',
+                            borderwidth=1)
+        
+        # Configure alternating row colors
+        self.style.map('Preview.Treeview',
+                      background=[('selected', '#E8F4FD')],
+                      foreground=[('selected', '#2C3E50')])
   
     def build_file_selection_screen(self):
         self.master.iconbitmap(resource_path('sqlbuilder_icon.ico'))  # This sets the icon
@@ -482,7 +505,7 @@ class SQLTableBuilder:
         delimiter_frame = tk.Frame(file_group)
         delimiter_frame.pack(fill="x", pady=(5, 0))
         tk.Label(delimiter_frame, text="Delimiter:").pack(side="left")
-        delimiter_entry = tk.Entry(delimiter_frame, textvariable=self.delimiter, width=5, justify="center")
+        delimiter_entry = tk.Entry(delimiter_frame, textvariable=self.delimiter, width=3, justify="center")
         delimiter_entry.pack(side="left", padx=5)
         self.infer_checkbox = tk.Checkbutton(
             delimiter_frame, text="Infer Data Types ", variable=self.infer_types_var
@@ -577,7 +600,7 @@ class SQLTableBuilder:
       
     def build_column_type_screen(self):
         self.additional_column_count = 0
-        self.master.geometry("565x800")
+        self.master.geometry("530x800")
         for widget in self.master.winfo_children():
             widget.destroy()
 
@@ -747,6 +770,7 @@ class SQLTableBuilder:
         self.update_truncate_enable_state()
 
         # === BACK AND EXIT BUTTONS ===
+
         back_frame = tk.Frame(self.master)
         back_frame.pack(pady=(5, 15))
         ttk.Button(back_frame, text="← Back", 
@@ -1179,21 +1203,43 @@ class SQLTableBuilder:
         self.executor.submit(load_preview_task)
 
     def update_preview_table(self, percentage=1):
-        """Optimized preview table using cached data"""
+        """Enhanced preview table with modern styling and visual improvements"""
         for widget in self.preview_frame.winfo_children():
             widget.destroy()
 
         if not self.data_cache.is_loaded:
-            tk.Label(self.preview_frame, text="No data loaded. Click 'Show' to load preview.", fg="gray").pack(pady=20)
+            # Enhanced no-data message
+            no_data_frame = tk.Frame(self.preview_frame, bg='#F8F9FA', relief='solid', bd=1)
+            no_data_frame.pack(fill='both', expand=True, padx=10, pady=10)
+            
+            icon_label = tk.Label(no_data_frame, text="📊", font=('Arial', 24), bg='#F8F9FA', fg='#6C757D')
+            icon_label.pack(pady=(20, 5))
+            
+            message_label = tk.Label(no_data_frame, text="No data loaded", 
+                                   font=('Arial', 12, 'bold'), bg='#F8F9FA', fg='#495057')
+            message_label.pack()
+            
+            instruction_label = tk.Label(no_data_frame, text="Click 'Show' to load preview", 
+                                       font=('Arial', 10), bg='#F8F9FA', fg='#6C757D')
+            instruction_label.pack(pady=(0, 20))
             return
 
         try:
+            # Setup enhanced styling
+            self.setup_preview_styles()
+            
             # Use cached data for preview
             headers = self.data_cache.headers
             sample_rows = self.data_cache.sample_rows
             
             if not sample_rows:
-                tk.Label(self.preview_frame, text="No data available for preview.", fg="red").pack(pady=20)
+                # Enhanced error message
+                error_frame = tk.Frame(self.preview_frame, bg='#FFF5F5', relief='solid', bd=1)
+                error_frame.pack(fill='both', expand=True, padx=10, pady=10)
+                
+                tk.Label(error_frame, text="⚠️", font=('Arial', 20), bg='#FFF5F5', fg='#E53E3E').pack(pady=(15, 5))
+                tk.Label(error_frame, text="No data available for preview", 
+                        font=('Arial', 11, 'bold'), bg='#FFF5F5', fg='#C53030').pack(pady=(0, 15))
                 return
                 
             # Calculate preview rows from sample
@@ -1201,17 +1247,42 @@ class SQLTableBuilder:
             count = max(1, int((percentage / 100) * total_sample))
             rows = sample_rows[:count]
 
-            container = tk.Frame(self.preview_frame)
-            container.pack(fill="both", expand=True)
+            # Main container with enhanced styling
+            main_container = tk.Frame(self.preview_frame, bg='#FFFFFF', relief='solid', bd=1)
+            main_container.pack(fill="both", expand=True, padx=8, pady=8)
 
-            x_scroll = tk.Scrollbar(container, orient="horizontal")
-            y_scroll = tk.Scrollbar(container, orient="vertical")
+            # Header section with statistics
+            header_section = tk.Frame(main_container, bg='#F8F9FA', height=35)
+            header_section.pack(fill='x', padx=2, pady=2)
+            header_section.pack_propagate(False)
+            
+            stats_text = f"📋 {len(rows)} rows × {len(headers)} columns"
+            stats_label = tk.Label(header_section, text=stats_text, 
+                                 font=('Arial', 9, 'bold'), bg='#F8F9FA', fg='#495057')
+            stats_label.pack(side='left', padx=10, pady=8)
+            
+            # File type indicator
+            if self.data_cache.file_info and self.data_cache.file_info.get('is_large_file'):
+                type_indicator = tk.Label(header_section, text="🔍 Large File Mode", 
+                                        font=('Arial', 8), bg='#FFF3CD', fg='#856404', 
+                                        relief='solid', bd=1, padx=6, pady=2)
+                type_indicator.pack(side='right', padx=10, pady=6)
 
+            # Table container with improved scrollbars
+            table_container = tk.Frame(main_container, bg='#FFFFFF')
+            table_container.pack(fill="both", expand=True, padx=5, pady=5)
+
+            # Enhanced scrollbars
+            x_scroll = ttk.Scrollbar(table_container, orient="horizontal")
+            y_scroll = ttk.Scrollbar(table_container, orient="vertical")
+
+            # Main table with enhanced styling
             tree = ttk.Treeview(
-                container,
+                table_container,
                 columns=headers,
                 show='headings',
-                height=5,
+                height=6,
+                style='Preview.Treeview',
                 xscrollcommand=x_scroll.set,
                 yscrollcommand=y_scroll.set
             )
@@ -1219,26 +1290,69 @@ class SQLTableBuilder:
             x_scroll.config(command=tree.xview)
             y_scroll.config(command=tree.yview)
 
+            # Configure column headers with enhanced styling
+            for i, header in enumerate(headers):
+                tree.heading(header, text=f"  {header}  ", anchor='w')
+                # Adjust column width based on content
+                max_width = max(len(header) * 8, 100)
+                if rows:
+                    # Check sample data to estimate better width
+                    sample_values = [str(row[i] if i < len(row) else '') for row in rows[:5]]
+                    max_content = max(len(val) for val in sample_values) if sample_values else 0
+                    max_width = max(max_width, min(max_content * 8, 200))
+                tree.column(header, width=max_width, anchor='w', minwidth=80)
+
+            # Add data with alternating row colors
+            for i, row in enumerate(rows):
+                # Ensure row has values for all columns
+                padded_row = row + [''] * (len(headers) - len(row))
+                values = [str(val)[:50] + '...' if len(str(val)) > 50 else str(val) for val in padded_row[:len(headers)]]
+                
+                # Insert with tags for alternating colors
+                tags = ('evenrow',) if i % 2 == 0 else ('oddrow',)
+                tree.insert("", "end", values=values, tags=tags)
+
+            # Configure alternating row colors
+            tree.tag_configure('evenrow', background='#FFFFFF')
+            tree.tag_configure('oddrow', background='#F8F9FA')
+
+            # Pack scrollbars and tree
             x_scroll.pack(side="bottom", fill="x")
             y_scroll.pack(side="right", fill="y")
             tree.pack(side="left", fill="both", expand=True)
 
-            for header in headers:
-                tree.heading(header, text=header, anchor='w')
-                tree.column(header, width=120, anchor='w')
-
-            for row in rows:
-                tree.insert("", "end", values=row)
-                
-            # Show info about the preview
-            info_text = f"Showing {len(rows)} of {total_sample} sample rows ({percentage}%)"
-            if self.data_cache.file_info and self.data_cache.file_info.get('is_large_file'):
-                info_text += f" | Estimated total: {self.data_cache.file_info.get('estimated_rows', 'Unknown'):,} rows"
+            # Enhanced footer with detailed statistics
+            footer_frame = tk.Frame(main_container, bg='#E9ECEF', height=30)
+            footer_frame.pack(fill='x', padx=2, pady=2)
+            footer_frame.pack_propagate(False)
             
-            tk.Label(self.preview_frame, text=info_text, fg="blue", font=("Arial", 8)).pack(pady=2)
+            # Left side - preview info
+            preview_info = f"Showing {len(rows):,} of {total_sample:,} sample rows ({percentage}%)"
+            if self.data_cache.file_info and self.data_cache.file_info.get('is_large_file'):
+                total_est = self.data_cache.file_info.get('estimated_rows', 'Unknown')
+                preview_info += f" | Est. total: {total_est:,} rows"
+            
+            info_label = tk.Label(footer_frame, text=preview_info, 
+                                font=('Arial', 8), bg='#E9ECEF', fg='#495057')
+            info_label.pack(side='left', padx=8, pady=6)
+            
+            # Right side - data quality indicator
+            quality_text = "✓ Data loaded successfully"
+            quality_label = tk.Label(footer_frame, text=quality_text, 
+                                   font=('Arial', 8), bg='#D4EDDA', fg='#155724',
+                                   relief='solid', bd=1, padx=4, pady=2)
+            quality_label.pack(side='right', padx=8, pady=4)
 
         except Exception as e:
-            tk.Label(self.preview_frame, text=f"Preview error: {e}", fg="red").pack(pady=20)
+            # Enhanced error display
+            error_container = tk.Frame(self.preview_frame, bg='#F8D7DA', relief='solid', bd=1)
+            error_container.pack(fill='both', expand=True, padx=10, pady=10)
+            
+            tk.Label(error_container, text="❌", font=('Arial', 20), bg='#F8D7DA', fg='#721C24').pack(pady=(15, 5))
+            tk.Label(error_container, text="Preview Error", 
+                    font=('Arial', 12, 'bold'), bg='#F8D7DA', fg='#721C24').pack()
+            tk.Label(error_container, text=str(e), 
+                    font=('Arial', 9), bg='#F8D7DA', fg='#721C24', wraplength=400).pack(pady=(5, 15))
 
     def apply_config_settings(self):
         self.config_mgr.load()

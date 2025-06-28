@@ -502,24 +502,18 @@ class SQLTableBuilder:
                   style='Primary.TButton',
                   command=self.browse_file).pack(side="left")
 
-        # Delimiter and Preview controls row (combined)
-        delimiter_frame = tk.Frame(file_group)
-        delimiter_frame.pack(fill="x", pady=(10, 10))
+        # Preview controls row (removed delimiter controls)
+        preview_frame = tk.Frame(file_group)
+        preview_frame.pack(fill="x", pady=(10, 10))
         
-        # Left side - Delimiter
-        tk.Label(delimiter_frame, text="Delimiter:", font=('Arial', 9)).pack(side="left")
-        delimiter_entry = tk.Entry(delimiter_frame, textvariable=self.delimiter, width=4, justify="center")
-        delimiter_entry.pack(side="left", padx=(5, 0))
-        
-        # Right side - Preview controls
-        preview_controls = tk.Frame(delimiter_frame)
-        preview_controls.pack(side="right")
+        # Preview controls (moved to left side since delimiter controls are removed)
+        preview_controls = tk.Frame(preview_frame)
+        preview_controls.pack(side="left")
         
         # Preview percentage with label and entry
-        tk.Label(preview_controls, text="Preview:", font=('Arial', 9)).pack(side="left")
+        tk.Label(preview_controls, text="Preview %", font=('Arial', 9)).pack(side="left")
         preview_entry = tk.Entry(preview_controls, textvariable=self.preview_percentage_var, width=4, justify="center")
         preview_entry.pack(side="left", padx=(5, 2))
-        tk.Label(preview_controls, text="%", font=('Arial', 9)).pack(side="left")
         
         # Show button
         self.show_button = ttk.Button(preview_controls, text="Preview Data", 
@@ -533,12 +527,23 @@ class SQLTableBuilder:
         self.preview_frame.pack(fill="both", expand=True, pady=(10, 10))
 
         action_frame = tk.Frame(main_frame)
-        action_frame.pack(pady=15)
+        action_frame.pack(pady=15, fill="x")
         self.next_button = ttk.Button(action_frame, text="Next →", 
                                      style='Primary.TButton',
                                      width=8, state="disabled", 
                                      command=self.process_file)
-        self.next_button.pack()
+        self.next_button.pack(side="left")
+        
+        # Add Clear and Exit buttons on the right side
+        ttk.Button(action_frame, text="Exit", 
+                  style='Secondary.TButton',
+                  width=8, 
+                  command=self.safe_exit).pack(side="right")
+        
+        ttk.Button(action_frame, text="Clear", 
+                  style='Secondary.TButton',
+                  width=8, 
+                  command=self.clear_data).pack(side="right", padx=(0, 10))
                 
     def browse_file(self):
         filetypes = [("Data Files", "*.csv *.txt *.dat"), ("All Files", "*.*")]
@@ -569,6 +574,24 @@ class SQLTableBuilder:
                 self.delimiter.set(likely_delim if likely_delim != '\t' else '\\t')
         except Exception as e:
             self.delimiter.set(',')
+
+    def clear_data(self):
+        """Clear all loaded data and reset the interface"""
+        # Clear file path and data
+        self.file_path.set("")
+        self.delimiter.set("")
+        self.table_name.set("")
+        
+        # Clear cached data
+        self.data_cache.clear()
+        
+        # Clear preview display
+        for widget in self.preview_frame.winfo_children():
+            widget.destroy()
+        
+        # Disable buttons until new file is selected
+        self.show_button.config(state="disabled")
+        self.next_button.config(state="disabled")
 
     def process_file(self):
         """Process file with progress dialog and caching"""
@@ -1155,7 +1178,40 @@ class SQLTableBuilder:
             new_name = self.format_column_name(old_name, style)
             entry.delete(0, "end")
             entry.insert(0, new_name)
-        self.master.focus() 
+        self.master.focus()
+
+    def get_delimiter_display_name(self, delimiter):
+        """Convert delimiter character to descriptive display name"""
+        delimiter_map = {
+            ',': 'comma ( , )',
+            '|': 'pipe ( | )',
+            '\t': 'tab ( \\t )',
+            '\\t': 'tab ( \\t )',  # Handle escaped tab representation
+            ';': 'semicolon ( ; )',
+            ':': 'colon ( : )',
+            '*': 'asterisk ( * )',
+            '^': 'caret ( ^ )',
+            ' ': 'space (   )',
+            '#': 'hash ( # )',
+            '~': 'tilde ( ~ )',
+            '@': 'at ( @ )',
+            '!': 'exclamation ( ! )',
+            '%': 'percent ( % )',
+            '&': 'ampersand ( & )',
+            '+': 'plus ( + )',
+            '=': 'equals ( = )',
+            '/': 'slash ( / )',
+            '\\': 'backslash ( \\ )',
+            '-': 'dash ( - )',
+            '_': 'underscore ( _ )'
+        }
+        
+        if delimiter == "":
+            return "auto-detected"
+        elif delimiter in delimiter_map:
+            return delimiter_map[delimiter]
+        else:
+            return f"other ( {delimiter} )" 
 
     def on_apply_preview_percentage(self):
         try:
@@ -1262,12 +1318,15 @@ class SQLTableBuilder:
             main_container = tk.Frame(self.preview_frame, bg='#FFFFFF', relief='solid', bd=1)
             main_container.pack(fill="both", expand=True, padx=8, pady=8)
 
-            # Header section with statistics
+            # Header section with statistics (including delimiter info)
             header_section = tk.Frame(main_container, bg='#F8F9FA', height=35)
             header_section.pack(fill='x', padx=2, pady=2)
             header_section.pack_propagate(False)
             
-            stats_text = f"📋 {len(rows)} rows - {len(headers)} columns"
+            # Get delimiter for display using descriptive name
+            delimiter_display = self.get_delimiter_display_name(self.delimiter.get())
+            
+            stats_text = f"📋 {len(rows)} rows - {len(headers)} columns - Delimiter: {delimiter_display}"
             stats_label = tk.Label(header_section, text=stats_text, 
                                  font=('Arial', 9, 'bold'), bg='#F8F9FA', fg='#495057')
             stats_label.pack(side='left', padx=10, pady=8)

@@ -232,15 +232,16 @@ class ProgressWindow:
         
         # Create style for this button
         style = ttk.Style()
-        style.configure('LightBlue.TButton', 
-                       background='#ADD8E6',
+        style.configure('ProgressCancel.TButton', 
+                       background='#FFB6C1',  # Light pink
                        foreground='black',
-                       padding=(15, 8),
-                       relief='raised',
-                       borderwidth=1)
+                       padding=(5, 2),        # Smaller padding
+                       relief='flat',
+                       borderwidth=1,
+                       font=('Arial', 8))
         
         self.cancel_button = ttk.Button(self.window, text="Cancel", 
-                                       style='LightBlue.TButton',
+                                       style='ProgressCancel.TButton',
                                        command=self.cancel)
         self.cancel_button.pack(pady=10)
         
@@ -345,33 +346,73 @@ class SQLTableBuilder:
         self.build_file_selection_screen()
 
     def setup_button_styles(self):
-        """Configure button styles with light blue theme"""
+        """Configure button styles with compact design and light blue theme"""
         self.style = ttk.Style()
         
-        # Configure light blue button style
-        self.style.configure('LightBlue.TButton',
-                            background='#ADD8E6',  # Light blue color
+        # Configure primary button style - even smaller with black text on light blue
+        self.style.configure('Primary.TButton',
+                            background='#ADD8E6',  # Light blue
                             foreground='black',
-                            padding=(15, 8),
-                            relief='raised',
-                            borderwidth=1)
+                            padding=(6, 3),        # Further reduced from (8, 4)
+                            relief='flat',
+                            borderwidth=1,
+                            focuscolor='none',
+                            font=('Arial', 8))
         
-        # Configure hover effect
-        self.style.map('LightBlue.TButton',
-                      background=[('active', '#87CEEB'),  # Slightly darker blue on hover
-                                 ('pressed', '#87CEFA')])  # Sky blue when pressed
+        # Configure hover and pressed effects
+        self.style.map('Primary.TButton',
+                      background=[('active', '#87CEEB'),   # Slightly darker light blue
+                                 ('pressed', '#87CEFA')],  # Sky blue
+                      relief=[('pressed', 'flat'),
+                             ('!pressed', 'flat')])
         
         # Small button variant for compact spaces
-        self.style.configure('LightBlueSmall.TButton',
-                            background='#ADD8E6',
+        self.style.configure('Small.TButton',
+                            background='#B0E0E6',  # Powder blue
                             foreground='black',
-                            padding=(10, 6),
-                            relief='raised',
-                            borderwidth=1)
+                            padding=(4, 2),        # Further reduced from (6, 3)
+                            relief='flat',
+                            borderwidth=1,
+                            focuscolor='none',
+                            font=('Arial', 8))
         
-        self.style.map('LightBlueSmall.TButton',
-                      background=[('active', '#87CEEB'),
-                                 ('pressed', '#87CEFA')])
+        self.style.map('Small.TButton',
+                      background=[('active', '#AFEEEE'),   # Pale turquoise
+                                 ('pressed', '#ADD8E6')],  # Light blue
+                      relief=[('pressed', 'flat'),
+                             ('!pressed', 'flat')])
+        
+        # Secondary button style for less important actions
+        self.style.configure('Secondary.TButton',
+                            background='#E0F6FF',  # Very light blue
+                            foreground='black',
+                            padding=(6, 3),
+                            relief='flat',
+                            borderwidth=1,
+                            focuscolor='none',
+                            font=('Arial', 8))
+        
+        self.style.map('Secondary.TButton',
+                      background=[('active', '#D0EFFF'),
+                                 ('pressed', '#C0E8FF')],
+                      relief=[('pressed', 'flat'),
+                             ('!pressed', 'flat')])
+        
+        # Success button style for save/generate actions
+        self.style.configure('Success.TButton',
+                            background='#87CEEB',  # Sky blue
+                            foreground='black',
+                            padding=(6, 3),
+                            relief='flat',
+                            borderwidth=1,
+                            focuscolor='none',
+                            font=('Arial', 8, 'bold'))
+        
+        self.style.map('Success.TButton',
+                      background=[('active', '#87CEFA'),   # Light sky blue
+                                 ('pressed', '#ADD8E6')],  # Light blue
+                      relief=[('pressed', 'flat'),
+                             ('!pressed', 'flat')])
   
     def build_file_selection_screen(self):
         self.master.iconbitmap(resource_path('sqlbuilder_icon.ico'))  # This sets the icon
@@ -434,7 +475,7 @@ class SQLTableBuilder:
         file_entry = tk.Entry(file_frame, textvariable=self.file_path, width=50)
         file_entry.pack(side="left", fill="x", expand=True, padx=(0, 5))
         ttk.Button(file_frame, text="Browse...", 
-                  style='LightBlue.TButton',
+                  style='Primary.TButton',
                   command=self.browse_file).pack(side="left")
 
         # Delimiter
@@ -450,8 +491,8 @@ class SQLTableBuilder:
         tk.Label(delimiter_frame, text="Preview %:").pack(side="left", padx=(10, 2))
         tk.Entry(delimiter_frame, textvariable=self.preview_percentage_var, width=5, justify="center").pack(side="left")
         self.show_button = ttk.Button(delimiter_frame, text="Show", 
-                                     style='LightBlueSmall.TButton',
-                                     width=5, state="disabled", 
+                                     style='Small.TButton',
+                                     width=6, state="disabled", 
                                      command=self.on_apply_preview_percentage)
         self.show_button.pack(side="left", padx=(5, 0))
                 
@@ -461,9 +502,9 @@ class SQLTableBuilder:
 
         action_frame = tk.Frame(main_frame)
         action_frame.pack(pady=15)
-        self.next_button = ttk.Button(action_frame, text="Next >", 
-                                     style='LightBlue.TButton',
-                                     width=15, state="disabled", 
+        self.next_button = ttk.Button(action_frame, text="Next →", 
+                                     style='Primary.TButton',
+                                     width=8, state="disabled", 
                                      command=self.process_file)
         self.next_button.pack()
                 
@@ -586,11 +627,11 @@ class SQLTableBuilder:
 
         # Add Column and Reset buttons inline
         self.add_column_button = ttk.Button(options_frame, text="Add Column", 
-                                           style='LightBlue.TButton',
+                                           style='Small.TButton',
                                            command=self.add_new_column_row)
         self.add_column_button.pack(side="left", padx=10)
-        self.reset_button = ttk.Button(options_frame, text="Reset Data Types", 
-                                      style='LightBlue.TButton',
+        self.reset_button = ttk.Button(options_frame, text="Reset Types", 
+                                      style='Small.TButton',
                                       command=self.reset_data_types_immediately, 
                                       state="disabled")
         self.reset_button.pack(side="left", padx=5)
@@ -603,8 +644,8 @@ class SQLTableBuilder:
         self.naming_combo = ttk.Combobox(rename_frame, textvariable=self.naming_style_var, values=["CamelCase", "snake_case", "lowercase", "UPPERCASE"], width=15, state="readonly")
         self.naming_combo.pack(side="left", padx=2)
         ttk.Button(rename_frame, text="Set", 
-                  style='LightBlueSmall.TButton',
-                  width=5, 
+                  style='Small.TButton',
+                  width=4, 
                   command=self.apply_column_naming_convention).pack(side="left", padx=5)    
         
         # Disable checkboxes initially
@@ -699,22 +740,22 @@ class SQLTableBuilder:
         self.include_insert_script.trace_add("write", self.update_truncate_enable_state)
         self.batch_insert_check = tk.Checkbutton(checkbox_row, text=f"Batch INSERT ({self.insert_batch_size})", variable=self.batch_insert_var)
         self.batch_insert_check.pack(side="left", padx=5)
-        ttk.Button(checkbox_row, text="Save", 
-                  style='LightBlue.TButton',
-                  width=15, 
+        ttk.Button(checkbox_row, text="Save Scripts", 
+                  style='Success.TButton',
+                  width=9, 
                   command=self.handle_generate_scripts).pack(side="right", padx=10)
         self.update_truncate_enable_state()
 
         # === BACK AND EXIT BUTTONS ===
         back_frame = tk.Frame(self.master)
         back_frame.pack(pady=(5, 15))
-        ttk.Button(back_frame, text="< Back", 
-                  style='LightBlue.TButton',
-                  width=15, 
+        ttk.Button(back_frame, text="← Back", 
+                  style='Secondary.TButton',
+                  width=8, 
                   command=self.build_file_selection_screen).pack(side="left", padx=10)
         ttk.Button(back_frame, text="Exit", 
-                  style='LightBlue.TButton',
-                  width=15, 
+                  style='Secondary.TButton',
+                  width=8, 
                   command=self.safe_exit).pack(side="left", padx=10)
 
     def handle_generate_scripts(self):

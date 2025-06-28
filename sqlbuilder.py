@@ -522,7 +522,7 @@ class SQLTableBuilder:
         tk.Label(preview_controls, text="%", font=('Arial', 9)).pack(side="left")
         
         # Show button
-        self.show_button = ttk.Button(preview_controls, text="Show Preview", 
+        self.show_button = ttk.Button(preview_controls, text="Preview Data", 
                                      style='Small.TButton',
                                      width=12, state="disabled", 
                                      command=self.on_apply_preview_percentage)
@@ -634,15 +634,6 @@ class SQLTableBuilder:
         table_frame.pack(fill="x", pady=3)
         tk.Label(table_frame, text="Table:", width=12, anchor="w").pack(side="left")
         tk.Entry(table_frame, width=40, textvariable=self.table_name).pack(side="left")
-
-        # File info display
-        info_frame = tk.Frame(settings_frame)
-        info_frame.pack(fill="x", pady=3)
-        if self.data_cache.is_loaded:
-            file_info = self.data_cache.file_info
-            rows_text = f"~{file_info['estimated_rows']:,}" if file_info['is_large_file'] else f"{file_info['total_rows']:,}"
-            file_type = "Large File (Optimized)" if file_info['is_large_file'] else "Standard File"
-            tk.Label(info_frame, text=f"Rows: {rows_text} | Type: {file_type}", fg="blue").pack(side="left")
 
         # Options
         options_frame = tk.Frame(settings_frame)
@@ -759,6 +750,7 @@ class SQLTableBuilder:
         # === SCRIPT GENERATOR SECTION ===
         script_frame = tk.LabelFrame(self.master, text="Script Generator", padx=10, pady=10)
         script_frame.pack(fill="x", padx=10, pady=(10, 0))
+        
         checkbox_row = tk.Frame(script_frame)
         checkbox_row.pack(fill="x", pady=5)
 
@@ -776,6 +768,16 @@ class SQLTableBuilder:
                   style='Success.TButton',
                   width=9, 
                   command=self.handle_generate_scripts).pack(side="right", padx=10)
+        
+        # File info display (rows count) - positioned beneath Batch INSERT
+        if self.data_cache.is_loaded:
+            info_frame = tk.Frame(script_frame)
+            info_frame.pack(fill="x", pady=(5, 0))
+            file_info = self.data_cache.file_info
+            rows_text = f"~{file_info['estimated_rows']:,}" if file_info['is_large_file'] else f"{file_info['total_rows']:,}"
+            filename = os.path.basename(self.file_path.get())
+            tk.Label(info_frame, text=f"Total Rows in {filename}: {rows_text}", fg="blue", font=('Arial', 9)).pack(side="left", padx=10)
+        
         self.update_truncate_enable_state()
 
         # === BACK AND EXIT BUTTONS ===
@@ -1228,7 +1230,7 @@ class SQLTableBuilder:
                                    font=('Arial', 12, 'bold'), bg='#F8F9FA', fg='#495057')
             message_label.pack()
             
-            instruction_label = tk.Label(no_data_frame, text="Click 'Show Preview' to load preview", 
+            instruction_label = tk.Label(no_data_frame, text="Click 'Preview Data' to load preview", 
                                        font=('Arial', 10), bg='#F8F9FA', fg='#6C757D')
             instruction_label.pack(pady=(0, 20))
             return
@@ -1265,7 +1267,7 @@ class SQLTableBuilder:
             header_section.pack(fill='x', padx=2, pady=2)
             header_section.pack_propagate(False)
             
-            stats_text = f"📋 {len(rows)} rows × {len(headers)} columns"
+            stats_text = f"📋 {len(rows)} rows - {len(headers)} columns"
             stats_label = tk.Label(header_section, text=stats_text, 
                                  font=('Arial', 9, 'bold'), bg='#F8F9FA', fg='#495057')
             stats_label.pack(side='left', padx=10, pady=8)

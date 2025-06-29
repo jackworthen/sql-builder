@@ -5,6 +5,7 @@ from collections import defaultdict, Counter
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import time
+import json
 
 def resource_path(filename):
     """ Get absolute path to resource, works for dev and for PyInstaller bundle """
@@ -29,6 +30,7 @@ class DataCache:
         self.is_loaded = False
         self.is_large_file = False
         self.chunk_generator = None
+        self.file_type = None
         
     def clear(self):
         """Clear cached data"""
@@ -39,11 +41,160 @@ class DataCache:
         self.is_loaded = False
         self.is_large_file = False
         self.chunk_generator = None
+        self.file_type = None
+        
+    def get_file_type(self, file_path):
+        """Determine file type based on extension"""
+        extension = os.path.splitext(file_path)[1].lower()
+        if extension == '.json':
+            return 'json'
+        else:
+            return 'csv'
         
     def load_file(self, file_path, delimiter, sample_percentage=15, large_file_threshold=50000):
         """Load file with smart caching strategy"""
         self.clear()
         
+        # Determine file type
+        self.file_type = self.get_file_type(file_path)
+        
+        if self.file_type == 'json':
+            self._load_json_file(file_path, sample_percentage, large_file_threshold)
+        else:
+            self._load_csv_file(file_path, delimiter, sample_percentage, large_file_threshold)
+            
+        self.file_info = {
+            'total_rows': len(self.all_rows) if self.all_rows else getattr(self, 'estimated_rows', 0),
+            'delimiter': delimiter if self.file_type == 'csv' else 'N/A (JSON)',
+            'file_path': file_path,
+            'is_large_file': self.is_large_file,
+            'estimated_rows': getattr(self, 'estimated_rows', len(self.all_rows) if self.all_rows else 0),
+            'file_type': self.file_type
+        }
+        self.is_loaded = True
+        
+    def _load_json_file(self, file_path, sample_percentage, large_file_threshold):
+        """Load and process JSON file"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                # First, try to get file size estimate
+                f.seek(0, 2)  # Go to end
+                file_size = f.tell()
+                f.seek(0)  # Go back to start
+                
+                # Load JSON data
+                json_data = json.load(f)
+                
+            # Process JSON into tabular format
+            processed_data = self._process_json_data(json_data)
+            
+            if not processed_data:
+                raise ValueError("No valid tabular data found in JSON file")
+                
+            self.headers = processed_data['headers']
+            self.all_rows = processed_data['rows']
+            self.estimated_rows = len(self.all_rows)
+            
+            # Determine if it's a large file
+            self.is_large_file = len(self.all_rows) > large_file_threshold
+            
+            # Create sample for type inference
+            sample_size = max(100, int(len(self.all_rows) * sample_percentage / 100))
+            self.sample_rows = self.all_rows[:sample_size]
+            
+            # For very large JSON files, we might want to clear all_rows and use generator
+            if self.is_large_file:
+                # Keep all_rows for JSON since we've already loaded it into memory
+                # JSON files are typically smaller and already fully loaded
+                pass
+                
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON file: {e}")
+        except Exception as e:
+            raise ValueError(f"Error processing JSON file: {e}")
+    
+    def _process_json_data(self, json_data):
+        """Convert JSON data to tabular format"""
+        if isinstance(json_data, list):
+            # Array of objects - most common case
+            if not json_data:
+                return {'headers': [], 'rows': []}
+                
+            # If it's a list of primitives, convert to single column
+            if not isinstance(json_data[0], dict):
+                return {
+                    'headers': ['value'],
+                    'rows': [[str(item)] for item in json_data]
+                }
+                
+            # Process array of objects - preserve order
+            headers = []
+            processed_rows = []
+            
+            # First pass: collect all possible headers in order of appearance
+            for item in json_data:
+                if isinstance(item, dict):
+                    flattened = self._flatten_object(item)
+                    # Add new headers in the order they appear
+                    for key in flattened.keys():
+                        if key not in headers:
+                            headers.append(key)
+            
+            # Second pass: create rows with consistent column structure
+            for item in json_data:
+                if isinstance(item, dict):
+                    flattened = self._flatten_object(item)
+                    row = [str(flattened.get(header, '')) for header in headers]
+                    processed_rows.append(row)
+                    
+        elif isinstance(json_data, dict):
+            # Single object - convert to single row, preserve key order
+            flattened = self._flatten_object(json_data)
+            headers = list(flattened.keys())  # Maintain order from the object
+            processed_rows = [[str(flattened.get(header, '')) for header in headers]]
+            
+        else:
+            # Single primitive value
+            headers = ['value']
+            processed_rows = [[str(json_data)]]
+            
+        return {
+            'headers': headers,
+            'rows': processed_rows
+        }
+    
+    def _flatten_object(self, obj, parent_key='', sep='.'):
+        """Flatten nested JSON objects using dot notation, preserving key order"""
+        items = []
+        
+        if isinstance(obj, dict):
+            # Process keys in order they appear in the dictionary
+            for key, value in obj.items():
+                new_key = f"{parent_key}{sep}{key}" if parent_key else key
+                
+                if isinstance(value, dict):
+                    items.extend(self._flatten_object(value, new_key, sep).items())
+                elif isinstance(value, list):
+                    # Handle arrays - convert to comma-separated string for simplicity
+                    if value and isinstance(value[0], dict):
+                        # Array of objects - flatten each and number them
+                        for i, item in enumerate(value):
+                            items.extend(self._flatten_object(item, f"{new_key}[{i}]", sep).items())
+                    else:
+                        # Array of primitives - join as string
+                        items.append((new_key, ', '.join(str(v) for v in value)))
+                else:
+                    items.append((new_key, value))
+        else:
+            # Handle case where obj is not a dict (shouldn't happen in normal flattening)
+            items.append((parent_key or 'value', obj))
+            
+        # Return as OrderedDict to preserve insertion order, but convert to regular dict
+        # since Python 3.7+ regular dicts maintain insertion order
+        return dict(items)
+        
+    def _load_csv_file(self, file_path, delimiter, sample_percentage, large_file_threshold):
+        """Load CSV file (original logic)"""
         # Get file size estimate
         with open(file_path, 'r', newline='') as f:
             # Read first few lines to estimate
@@ -62,23 +213,15 @@ class DataCache:
             estimated_rows = int(file_size / avg_line_size)
             
         self.is_large_file = estimated_rows > large_file_threshold
+        self.estimated_rows = estimated_rows
         
         if self.is_large_file:
-            self._load_large_file(file_path, delimiter, sample_percentage)
+            self._load_large_csv_file(file_path, delimiter, sample_percentage)
         else:
-            self._load_small_file(file_path, delimiter, sample_percentage)
+            self._load_small_csv_file(file_path, delimiter, sample_percentage)
             
-        self.file_info = {
-            'total_rows': len(self.all_rows) if self.all_rows else estimated_rows,
-            'delimiter': delimiter,
-            'file_path': file_path,
-            'is_large_file': self.is_large_file,
-            'estimated_rows': estimated_rows
-        }
-        self.is_loaded = True
-        
-    def _load_small_file(self, file_path, delimiter, sample_percentage):
-        """Load entire file for small datasets"""
+    def _load_small_csv_file(self, file_path, delimiter, sample_percentage):
+        """Load entire CSV file for small datasets"""
         with open(file_path, 'r', newline='') as f:
             reader = csv.reader(f, delimiter=delimiter)
             self.headers = next(reader)
@@ -88,8 +231,8 @@ class DataCache:
         sample_size = max(100, int(len(self.all_rows) * sample_percentage / 100))
         self.sample_rows = self.all_rows[:sample_size]
         
-    def _load_large_file(self, file_path, delimiter, sample_percentage, chunk_size=10000):
-        """Load only sample for large files"""
+    def _load_large_csv_file(self, file_path, delimiter, sample_percentage, chunk_size=10000):
+        """Load only sample for large CSV files"""
         sample_target = max(1000, int(chunk_size * sample_percentage / 100))
         
         with open(file_path, 'r', newline='') as f:
@@ -108,12 +251,17 @@ class DataCache:
         
     def get_chunk_generator(self, chunk_size=5000):
         """Get generator for chunked processing of large files"""
-        if not self.is_large_file and self.all_rows:
-            # For small files, chunk the loaded data
+        if self.file_type == 'json':
+            # For JSON, chunk the loaded data
+            if self.all_rows:
+                for i in range(0, len(self.all_rows), chunk_size):
+                    yield self.all_rows[i:i + chunk_size]
+        elif not self.is_large_file and self.all_rows:
+            # For small CSV files, chunk the loaded data
             for i in range(0, len(self.all_rows), chunk_size):
                 yield self.all_rows[i:i + chunk_size]
         else:
-            # For large files, read chunks from file
+            # For large CSV files, read chunks from file
             with open(self.file_info['file_path'], 'r', newline='') as f:
                 reader = csv.reader(f, delimiter=self.file_info['delimiter'])
                 next(reader)  # Skip headers
@@ -543,11 +691,22 @@ class SQLTableBuilder:
                   command=self.safe_exit).pack(side="right")
                 
     def browse_file(self):
-        filetypes = [("Data Files", "*.csv *.txt *.dat"), ("All Files", "*.*")]
+        # Updated to include JSON files
+        filetypes = [("Data Files", "*.csv *.txt *.dat *.json"), ("All Files", "*.*")]
         selected_path = filedialog.askopenfilename(title="Open File", filetypes=filetypes)
         if selected_path:
             self.file_path.set(selected_path)
-            self.infer_delimiter()
+            
+            # Determine file type and handle accordingly
+            file_type = self.data_cache.get_file_type(selected_path)
+            
+            if file_type == 'json':
+                # Skip delimiter inference for JSON files
+                self.delimiter.set("N/A (JSON)")
+            else:
+                # Infer delimiter for CSV files
+                self.infer_delimiter()
+            
             default_name = os.path.splitext(os.path.basename(selected_path))[0]
             self.table_name.set(default_name)
             
@@ -604,7 +763,11 @@ class SQLTableBuilder:
                 progress.update_text("Reading file structure...")
                 
                 delimiter_val = self.delimiter.get()
-                delimiter_val = "\t" if delimiter_val == "\\t" else delimiter_val
+                # Only process delimiter for non-JSON files
+                if delimiter_val != "N/A (JSON)":
+                    delimiter_val = "\t" if delimiter_val == "\\t" else delimiter_val
+                else:
+                    delimiter_val = None  # Not used for JSON
                 
                 # Load file into cache
                 progress.update_text("Loading data into cache...")
@@ -788,8 +951,16 @@ class SQLTableBuilder:
             info_frame = tk.Frame(script_frame)
             info_frame.pack(fill="x", pady=(5, 0))
             file_info = self.data_cache.file_info
-            rows_text = f"~{file_info['estimated_rows']:,}" if file_info['is_large_file'] else f"{file_info['total_rows']:,}"
-            tk.Label(info_frame, text=f"Total Rows: {rows_text}", fg="black", font=('Arial', 9)).pack(side="left", padx=10)
+            
+            # Display different info based on file type
+            if file_info.get('file_type') == 'json':
+                rows_text = f"{file_info['total_rows']:,}"
+                type_text = "JSON"
+            else:
+                rows_text = f"~{file_info['estimated_rows']:,}" if file_info['is_large_file'] else f"{file_info['total_rows']:,}"
+                type_text = "CSV"
+            
+            tk.Label(info_frame, text=f"Total Rows: {rows_text} ({type_text})", fg="black", font=('Arial', 9)).pack(side="left", padx=10)
         
         self.update_truncate_enable_state()
 
@@ -1213,6 +1384,8 @@ class SQLTableBuilder:
         
         if delimiter == "":
             return "auto-detected"
+        elif delimiter == "N/A (JSON)":
+            return "N/A (JSON file)"
         elif delimiter in delimiter_map:
             return delimiter_map[delimiter]
         else:
@@ -1246,7 +1419,11 @@ class SQLTableBuilder:
                 progress.update_text("Reading file...")
                 
                 delimiter_val = self.delimiter.get()
-                delimiter_val = "\t" if delimiter_val == "\\t" else delimiter_val
+                # Handle delimiter for non-JSON files
+                if delimiter_val != "N/A (JSON)":
+                    delimiter_val = "\t" if delimiter_val == "\\t" else delimiter_val
+                else:
+                    delimiter_val = None  # Not used for JSON
                 
                 # Load file into cache
                 self.data_cache.load_file(path, delimiter_val, self.sample_percentage)
@@ -1337,11 +1514,17 @@ class SQLTableBuilder:
             stats_label.pack(side='left', padx=10, pady=8)
             
             # File type indicator
-            if self.data_cache.file_info and self.data_cache.file_info.get('is_large_file'):
-                type_indicator = tk.Label(header_section, text="🔍 Large File Mode", 
-                                        font=('Arial', 8), bg='#FFF3CD', fg='#856404', 
-                                        relief='solid', bd=1, padx=6, pady=2)
-                type_indicator.pack(side='right', padx=10, pady=6)
+            if self.data_cache.file_info:
+                if self.data_cache.file_info.get('file_type') == 'json':
+                    type_indicator = tk.Label(header_section, text="📄 JSON File", 
+                                            font=('Arial', 8), bg='#D4EDDA', fg='#155724', 
+                                            relief='solid', bd=1, padx=6, pady=2)
+                    type_indicator.pack(side='right', padx=10, pady=6)
+                elif self.data_cache.file_info.get('is_large_file'):
+                    type_indicator = tk.Label(header_section, text="🔍 Large File Mode", 
+                                            font=('Arial', 8), bg='#FFF3CD', fg='#856404', 
+                                            relief='solid', bd=1, padx=6, pady=2)
+                    type_indicator.pack(side='right', padx=10, pady=6)
 
             # Table container with improved scrollbars
             table_container = tk.Frame(main_container, bg='#FFFFFF')
@@ -1403,9 +1586,13 @@ class SQLTableBuilder:
             
             # Left side - preview info
             preview_info = f"Showing {len(rows):,} of {total_sample:,} sample rows ({percentage}%)"
-            if self.data_cache.file_info and self.data_cache.file_info.get('is_large_file'):
-                total_est = self.data_cache.file_info.get('estimated_rows', 'Unknown')
-                preview_info += f" | Est. total: {total_est:,} rows"
+            if self.data_cache.file_info:
+                if self.data_cache.file_info.get('file_type') == 'json':
+                    total_actual = self.data_cache.file_info.get('total_rows', 'Unknown')
+                    preview_info += f" | Total: {total_actual:,} rows"
+                elif self.data_cache.file_info.get('is_large_file'):
+                    total_est = self.data_cache.file_info.get('estimated_rows', 'Unknown')
+                    preview_info += f" | Est. total: {total_est:,} rows"
             
             info_label = tk.Label(footer_frame, text=preview_info, 
                                 font=('Arial', 8), bg='#E9ECEF', fg='#495057')

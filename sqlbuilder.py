@@ -971,6 +971,7 @@ class SQLTableBuilder:
             tk.Label(filename_frame, text=filename, fg="gray", font=('Arial', 8)).pack(side="left", padx=10)
         
         self.update_truncate_enable_state()
+        self.update_truncate_color()  # Ensure initial color is set correctly
 
         # === BACK AND EXIT BUTTONS ===
 
@@ -1655,9 +1656,19 @@ class SQLTableBuilder:
         self.sample_percentage = cfg.get("sample_percentage", 15)
 
         self.insert_batch_size = int(cfg.get("insert_batch_size") or 500)
-        self.truncate_before_insert = tk.BooleanVar()
+        # Only initialize truncate_before_insert if it doesn't exist, then apply config setting
+        if not hasattr(self, 'truncate_before_insert'):
+            self.truncate_before_insert = tk.BooleanVar()
+        self.truncate_before_insert.set(cfg.get("default_truncate", False))
         self.batch_insert_var.set(cfg.get("default_batch_insert", True))
         self.max_additional_columns = int(cfg.get("max_additional_columns", 1))
+
+        # Update truncate color if the checkbox widget exists
+        try:
+            if hasattr(self, 'truncate_check') and self.truncate_check.winfo_exists():
+                self.update_truncate_color()
+        except Exception:
+            pass
 
         # Try to update batch checkbox label if present
         try:

@@ -41,6 +41,7 @@ class ConfigManager:
             "default_include_create": True,
             "default_include_insert": True,
             "default_batch_insert": False,
+            "default_truncate": False,
             "insert_batch_size": 5000
         }
         self.load()
@@ -85,7 +86,7 @@ class ConfigManager:
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
         window.title("Settings")
-        window.geometry("350x430")
+        window.geometry("350x450")
         window.resizable(False, False)
         
         # Center the window
@@ -266,6 +267,13 @@ class ConfigManager:
         # Insert Options
         insert_frame = ttk.LabelFrame(parent, text="Insert Statement Options", padding="15")
         insert_frame.pack(fill=tk.X)
+        
+        # Default Truncate option (at the top)
+        truncate_var = tk.BooleanVar(value=self.config.get("default_truncate", False))
+        truncate_cb = ttk.Checkbutton(insert_frame, text="Enable TRUNCATE", 
+                                     variable=truncate_var)
+        truncate_cb.pack(anchor=tk.W, pady=(0, 10))
+        entries["default_truncate"] = truncate_var
         
         batch_var = tk.BooleanVar(value=self.config.get("default_batch_insert", False))
         batch_cb = ttk.Checkbutton(insert_frame, text="Enable Batch INSERT", 

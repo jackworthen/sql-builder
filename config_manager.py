@@ -166,42 +166,31 @@ class ConfigManager:
                                font=('TkDefaultFont', 10, 'bold'))
         title_label.pack(anchor=tk.W, pady=(0, 15))
         
-        # Default Database
-        db_frame = ttk.LabelFrame(parent, text="Default Database", padding="15")
-        db_frame.pack(fill=tk.X, pady=(0, 10))
+        # Default Values (combined database and schema)
+        defaults_frame = ttk.LabelFrame(parent, text="Default Values", padding="15")
+        defaults_frame.pack(fill=tk.X, pady=(0, 15))
         
         # Database Name - horizontal layout
-        db_input_frame = ttk.Frame(db_frame)
-        db_input_frame.pack(fill=tk.X)
+        db_input_frame = ttk.Frame(defaults_frame)
+        db_input_frame.pack(fill=tk.X, pady=(0, 10))
         ttk.Label(db_input_frame, text="Database Name:").pack(side=tk.LEFT)
         db_entry = ttk.Entry(db_input_frame, width=25)
         db_entry.insert(0, str(self.config.get("default_database", "")))
         db_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["default_database"] = db_entry
         
-        # Default Schema
-        schema_frame = ttk.LabelFrame(parent, text="Default Schema", padding="15")
-        schema_frame.pack(fill=tk.X, pady=(0, 10))
-        
         # Schema Name - horizontal layout
-        schema_input_frame = ttk.Frame(schema_frame)
+        schema_input_frame = ttk.Frame(defaults_frame)
         schema_input_frame.pack(fill=tk.X)
         ttk.Label(schema_input_frame, text="Schema Name:").pack(side=tk.LEFT)
         schema_entry = ttk.Entry(schema_input_frame, width=25)
         schema_entry.insert(0, str(self.config.get("default_schema", "dbo")))
         schema_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["default_schema"] = schema_entry
-
-    def _create_processing_tab(self, parent, entries):
-        """Create data processing section"""
-        # Title
-        title_label = ttk.Label(parent, text="Data Processing Configuration", 
-                               font=('TkDefaultFont', 10, 'bold'))
-        title_label.pack(anchor=tk.W, pady=(0, 15))
         
-        # Column Settings
+        # Column Settings (moved from processing tab)
         col_frame = ttk.LabelFrame(parent, text="Column Configuration", padding="15")
-        col_frame.pack(fill=tk.X, pady=(0, 15))
+        col_frame.pack(fill=tk.X, pady=(0, 10))
         
         # Maximum Additional Columns - horizontal layout
         col_input_frame = ttk.Frame(col_frame)
@@ -218,6 +207,13 @@ class ConfigManager:
                                   variable=infer_var)
         infer_cb.pack(anchor=tk.W)
         entries["default_infer_types"] = infer_var
+
+    def _create_processing_tab(self, parent, entries):
+        """Create data processing section"""
+        # Title
+        title_label = ttk.Label(parent, text="Data Processing Configuration", 
+                               font=('TkDefaultFont', 10, 'bold'))
+        title_label.pack(anchor=tk.W, pady=(0, 15))
         
         # Sample Settings
         sample_frame = ttk.LabelFrame(parent, text="Data Sampling", padding="15")
@@ -289,6 +285,19 @@ class ConfigManager:
         batch_entry.insert(0, str(self.config.get("insert_batch_size", 5000)))
         batch_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["insert_batch_size"] = batch_entry
+        
+        # Add callback to enable/disable batch size based on batch checkbox
+        def toggle_batch_size(*args):
+            if batch_var.get():
+                batch_entry.configure(state='normal')
+            else:
+                batch_entry.configure(state='disabled')
+        
+        # Set initial state based on checkbox value
+        toggle_batch_size()
+        
+        # Monitor changes to batch_var and call toggle_batch_size when it changes
+        batch_var.trace('w', toggle_batch_size)
 
     def _save_changes(self, entries, window, on_save_callback):
         """Save configuration changes"""

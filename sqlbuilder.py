@@ -658,7 +658,7 @@ class SQLTableBuilder:
         # Row for renaming dropdown and set button
         rename_frame = tk.Frame(settings_frame)
         rename_frame.pack(fill="x", pady=3)
-        tk.Label(rename_frame, text="Column Name Format:").pack(side="left", padx=(5, 2))
+        tk.Label(rename_frame, text="Column Format:").pack(side="left", padx=(5, 2))
         self.naming_style_var = tk.StringVar(value="")
         self.naming_combo = ttk.Combobox(rename_frame, textvariable=self.naming_style_var, values=["CamelCase", "snake_case", "lowercase", "UPPERCASE"], width=15, state="readonly")
         self.naming_combo.pack(side="left", padx=2)
@@ -789,8 +789,7 @@ class SQLTableBuilder:
             info_frame.pack(fill="x", pady=(5, 0))
             file_info = self.data_cache.file_info
             rows_text = f"~{file_info['estimated_rows']:,}" if file_info['is_large_file'] else f"{file_info['total_rows']:,}"
-            filename = os.path.basename(self.file_path.get())
-            tk.Label(info_frame, text=f"Total Rows in {filename}: {rows_text}", fg="blue", font=('Arial', 9)).pack(side="left", padx=10)
+            tk.Label(info_frame, text=f"Total Rows: {rows_text}", fg="black", font=('Arial', 9)).pack(side="left", padx=10)
         
         self.update_truncate_enable_state()
 

@@ -528,22 +528,24 @@ class SQLTableBuilder:
 
         action_frame = tk.Frame(main_frame)
         action_frame.pack(pady=15, fill="x")
+        
+        # Clear button - now positioned to the left of Next button
+        ttk.Button(action_frame, text="Clear", 
+                  style='Secondary.TButton',
+                  width=8, 
+                  command=self.clear_data).pack(side="left")
+        
         self.next_button = ttk.Button(action_frame, text="Next →", 
                                      style='Primary.TButton',
                                      width=8, state="disabled", 
                                      command=self.process_file)
-        self.next_button.pack(side="left")
+        self.next_button.pack(side="left", padx=(10, 0))
         
-        # Add Clear and Exit buttons on the right side
+        # Exit button on the right side
         ttk.Button(action_frame, text="Exit", 
                   style='Secondary.TButton',
                   width=8, 
                   command=self.safe_exit).pack(side="right")
-        
-        ttk.Button(action_frame, text="Clear", 
-                  style='Secondary.TButton',
-                  width=8, 
-                  command=self.clear_data).pack(side="right", padx=(0, 10))
                 
     def browse_file(self):
         filetypes = [("Data Files", "*.csv *.txt *.dat"), ("All Files", "*.*")]

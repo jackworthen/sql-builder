@@ -304,8 +304,6 @@ class SQLTableBuilder:
         self.pk_checkboxes = []
         self.null_vars = []
         self.null_checkboxes = []
-        self.use_identity = tk.BooleanVar()
-        self.use_guid = tk.BooleanVar()
         self.database_name = tk.StringVar()
         self.infer_types_var = tk.BooleanVar(value=True)
         self.include_create_script = tk.BooleanVar(value=True)
@@ -328,7 +326,6 @@ class SQLTableBuilder:
         self.include_create_script = tk.BooleanVar(value=cfg["default_include_create"])
         self.include_insert_script = tk.BooleanVar(value=cfg["default_include_insert"])
         self.batch_insert_var = tk.BooleanVar(value=cfg.get("default_batch_insert", True))
-        self.identity_guid_enabled = False
         self.insert_batch_size = int(cfg.get("insert_batch_size") or 500)
         self.truncate_before_insert = tk.BooleanVar()
         self.infer_types_var = tk.BooleanVar(value=cfg["default_infer_types"])
@@ -439,8 +436,6 @@ class SQLTableBuilder:
   
     def build_file_selection_screen(self):
         self.master.iconbitmap(resource_path('sqlbuilder_icon.ico'))  # This sets the icon
-        self.use_identity.set(False)
-        self.use_guid.set(False)
         self.delimiter.set("")  # Clear the delimiter field
         self.file_path.set("")  # Clear previously selected file
         self.data_cache.clear()  # Clear cached data
@@ -660,23 +655,10 @@ class SQLTableBuilder:
         tk.Label(table_frame, text="Table:", width=12, anchor="w").pack(side="left")
         tk.Entry(table_frame, width=40, textvariable=self.table_name).pack(side="left")
 
-        # Options
-        options_frame = tk.Frame(settings_frame)
-        options_frame.pack(fill="x", pady=5)
-        self.identity_checkbox = tk.Checkbutton(
-            options_frame, text="INT IDENTITY", variable=self.use_identity, command=self.update_identity_guid_states
-        )
-        self.identity_checkbox.pack(side="left", padx=5)
-
-        self.guid_checkbox = tk.Checkbutton(
-            options_frame, text="UNIQUEIDENTIFIER", variable=self.use_guid, command=self.update_identity_guid_states
-        )
-        self.guid_checkbox.pack(side="left", padx=5)
-        
         # Row for renaming dropdown and set button
         rename_frame = tk.Frame(settings_frame)
         rename_frame.pack(fill="x", pady=3)
-        tk.Label(rename_frame, text="Format Columns:").pack(side="left", padx=(5, 2))
+        tk.Label(rename_frame, text="Column Name Format:").pack(side="left", padx=(5, 2))
         self.naming_style_var = tk.StringVar(value="")
         self.naming_combo = ttk.Combobox(rename_frame, textvariable=self.naming_style_var, values=["CamelCase", "snake_case", "lowercase", "UPPERCASE"], width=15, state="readonly")
         self.naming_combo.pack(side="left", padx=2)
@@ -690,11 +672,6 @@ class SQLTableBuilder:
                                       command=self.reset_data_types_immediately, 
                                       state="disabled")
         self.reset_button.pack(side="left", padx=5)    
-        
-        # Disable checkboxes initially
-        self.identity_checkbox.config(state="disabled")
-        self.guid_checkbox.config(state="disabled")
-        self.identity_guid_enabled = False
 
         # === COLUMN DEFINITION SECTION ===
         column_frame = tk.LabelFrame(self.master, text="Define Table Columns", padx=10, pady=10)
@@ -833,40 +810,73 @@ class SQLTableBuilder:
             self.generate_sql_file()
         if self.include_insert_script.get():
             self.generate_insert_statements_optimized()
-    
-    def update_identity_guid_states(self):
-        if self.use_identity.get():
-            self.guid_checkbox.config(state="disabled")
-        else:
-            self.guid_checkbox.config(state="normal")
 
-        if self.use_guid.get():
-            self.identity_checkbox.config(state="disabled")
-        else:
-            self.identity_checkbox.config(state="normal")
+    def add_pk_options_to_dropdown(self, index):
+        """Add INT IDENTITY and UNIQUEIDENTIFIER to the top of a dropdown when PK is selected"""
+        type_combo = self.type_entries[index]
+        current_values = list(type_combo['values'])
+        
+        # Remove these options if they already exist
+        pk_options = ["INT IDENTITY", "UNIQUEIDENTIFIER"]
+        for option in pk_options:
+            if option in current_values:
+                current_values.remove(option)
+        
+        # Add them to the top
+        new_values = pk_options + current_values
+        type_combo['values'] = new_values
 
-        for idx, pk_var in enumerate(self.pk_vars):
-            if pk_var.get():
-                current_entry = self.type_entries[idx]
-                current_val = current_entry.get().strip().upper()
+    def remove_pk_options_from_dropdown(self, index):
+        """Remove INT IDENTITY and UNIQUEIDENTIFIER from dropdown when PK is unselected"""
+        type_combo = self.type_entries[index]
+        current_values = list(type_combo['values'])
+        current_value = type_combo.get()
+        
+        # Remove PK-specific options
+        pk_options = ["INT IDENTITY", "UNIQUEIDENTIFIER"]
+        new_values = [val for val in current_values if val not in pk_options]
+        type_combo['values'] = new_values
+        
+        # If current selection was a PK-specific type, clear it
+        if current_value in pk_options:
+            type_combo.delete(0, tk.END)
 
-                if self.use_identity.get():
-                    if current_val != "INT IDENTITY":
-                        current_entry.delete(0, tk.END)
-                        current_entry.insert(0, "INT IDENTITY")
-                elif self.use_guid.get():
-                    if current_val != "UNIQUEIDENTIFIER":
-                        current_entry.delete(0, tk.END)
-                        current_entry.insert(0, "UNIQUEIDENTIFIER")
+    def update_pk_states(self, selected_index):
+        # First, handle mutual exclusivity (only one PK allowed)
+        for i, (pk_var, pk_checkbox, null_var, null_checkbox) in enumerate(
+            zip(self.pk_vars, self.pk_checkboxes, self.null_vars, self.null_checkboxes)
+        ):
+            if self.pk_vars[selected_index].get():
+                # A PK was selected
+                if i != selected_index:
+                    # Disable all other PK checkboxes and remove their PK options
+                    pk_var.set(False)
+                    pk_checkbox.config(state="disabled")
+                    self.remove_pk_options_from_dropdown(i)
                 else:
-                    # Neither identity nor guid selected, and current type matches either: clear it
-                    if current_val in ["INT IDENTITY", "UNIQUEIDENTIFIER"]:
-                        current_entry.delete(0, tk.END)
+                    # This is the selected PK column
+                    pk_checkbox.config(state="normal")
+                    null_var.set(False)
+                    null_checkbox.config(state="disabled")
+                    # Add PK options to this dropdown
+                    self.add_pk_options_to_dropdown(selected_index)
+            else:
+                # No PK selected, enable all checkboxes and remove PK options from all dropdowns
+                pk_checkbox.config(state="normal")
+                null_checkbox.config(state="normal")
+                self.remove_pk_options_from_dropdown(i)
 
-    def enable_reset_button(self):
-        """Enable the reset button"""
-        if hasattr(self, 'reset_button') and self.reset_button.winfo_exists():
-            self.reset_button.config(state="normal")
+    def update_null_states(self, selected_index):
+        for i, (pk_var, pk_checkbox, null_var, null_checkbox) in enumerate(
+            zip(self.pk_vars, self.pk_checkboxes, self.null_vars, self.null_checkboxes)
+        ):
+            if null_var.get():
+                pk_var.set(False)
+                pk_checkbox.config(state="disabled")
+                # Remove PK options when null is allowed
+                self.remove_pk_options_from_dropdown(i)
+            else:
+                pk_checkbox.config(state="normal")
 
     def update_truncate_color(self):
         if self.truncate_before_insert.get():
@@ -889,42 +899,10 @@ class SQLTableBuilder:
         except AttributeError:
             pass
 
-    def update_pk_states(self, selected_index):
-        for i, (pk_var, pk_checkbox, null_var, null_checkbox) in enumerate(
-            zip(self.pk_vars, self.pk_checkboxes, self.null_vars, self.null_checkboxes)
-        ):
-            if self.pk_vars[selected_index].get():
-                if i != selected_index:
-                    pk_var.set(False)
-                    pk_checkbox.config(state="disabled")
-                else:
-                    pk_checkbox.config(state="normal")
-                    null_var.set(False)
-                    null_checkbox.config(state="disabled")
-
-                    if self.use_identity.get():
-                        new_type = "INT IDENTITY"
-                    elif self.use_guid.get():
-                        new_type = "UNIQUEIDENTIFIER"
-                    else:
-                        new_type = None
-
-                    if new_type:
-                        self.type_entries[selected_index].delete(0, tk.END)
-                        self.type_entries[selected_index].insert(0, new_type)
-            else:
-                pk_checkbox.config(state="normal")
-                null_checkbox.config(state="normal")
-
-    def update_null_states(self, selected_index):
-        for i, (pk_var, pk_checkbox, null_var, null_checkbox) in enumerate(
-            zip(self.pk_vars, self.pk_checkboxes, self.null_vars, self.null_checkboxes)
-        ):
-            if null_var.get():
-                pk_var.set(False)
-                pk_checkbox.config(state="disabled")
-            else:
-                pk_checkbox.config(state="normal")
+    def enable_reset_button(self):
+        """Enable the reset button"""
+        if hasattr(self, 'reset_button') and self.reset_button.winfo_exists():
+            self.reset_button.config(state="normal")
 
     def generate_sql_file(self):
         table_name = self.table_name.get().strip()
@@ -1100,11 +1078,10 @@ class SQLTableBuilder:
                     combo.delete(0, "end")
                     combo.insert(0, inferred_type)
             
-            # Clear added columns' data types if neither INT IDENTITY nor UNIQUEIDENTIFIER is checked
-            if not self.use_identity.get() and not self.use_guid.get():
-                for i in range(original_column_count, len(self.type_entries)):
-                    combo = self.type_entries[i]
-                    combo.delete(0, "end")
+            # Clear added columns' data types
+            for i in range(original_column_count, len(self.type_entries)):
+                combo = self.type_entries[i]
+                combo.delete(0, "end")
             
             # Keep reset button enabled for future use
             self.reset_button.config(state="normal")
@@ -1145,11 +1122,10 @@ class SQLTableBuilder:
                                 combo.delete(0, "end")
                                 combo.insert(0, inferred_type)
                         
-                        # Clear added columns' data types if neither INT IDENTITY nor UNIQUEIDENTIFIER is checked
-                        if not self.use_identity.get() and not self.use_guid.get():
-                            for i in range(original_column_count, len(self.type_entries)):
-                                combo = self.type_entries[i]
-                                combo.delete(0, "end")
+                        # Clear added columns' data types
+                        for i in range(original_column_count, len(self.type_entries)):
+                            combo = self.type_entries[i]
+                            combo.delete(0, "end")
                         
                         # Enable the reset button after type inference (initial or user-initiated)
                         self.reset_button.config(state="normal")
@@ -1489,11 +1465,7 @@ class SQLTableBuilder:
     def add_new_column_row(self):
         if self.additional_column_count >= self.max_additional_columns:
             return
-        # Enable the identity/guid checkboxes if not already
-        if not self.identity_guid_enabled:
-            self.identity_checkbox.config(state="normal")
-            self.guid_checkbox.config(state="normal")
-            self.identity_guid_enabled = True
+            
         row = tk.Frame(self.scrollable_frame)
         row.pack(fill="x", pady=1, anchor="w")
 
@@ -1517,7 +1489,6 @@ class SQLTableBuilder:
         type_combo.bind("<Button-1>", lambda e: self.enable_reset_button())
 
         null_checkbox = tk.Checkbutton(row, variable=null_var, command=lambda idx=new_index: self.update_null_states(idx))
-        null_checkbox.pack(side="left")
         null_checkbox.pack(side="left")
 
         # Append new column at the end instead of inserting at beginning
@@ -1568,11 +1539,6 @@ class SQLTableBuilder:
             if self.additional_column_count <= 0:
                 # No more added columns, disable remove button
                 self.remove_column_button.config(state="disabled")
-                # Also disable identity/guid checkboxes if no added columns
-                if not self.identity_guid_enabled:
-                    self.identity_checkbox.config(state="disabled")
-                    self.guid_checkbox.config(state="disabled")
-                    self.identity_guid_enabled = False
             
             # Re-enable add button if it was disabled due to max columns
             if self.additional_column_count < self.max_additional_columns:

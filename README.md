@@ -2,8 +2,6 @@
 
 **🎯 Transform your data files into SQL magic with just a few clicks!**
 
-*Created by [Jack Worthen](https://github.com/jackworthen)*
-
 ---
 
 ## 🌟 What is SQL Table Builder Pro?
@@ -13,32 +11,37 @@ SQL Table Builder Pro is a powerful, user-friendly desktop application that tran
 ## 🎮 Features That'll Make You Smile
 
 ### 🧠 **Smart Data Type Inference**
-- Automatically detects data types from your files
-- Supports INT, FLOAT, DATETIME, VARCHAR, and more
-- Customizable type inference with statistical sampling
+- Automatically detects data types from your files with statistical sampling
+- Supports INT, FLOAT, DATETIME, VARCHAR, BIT, and more
+- Intelligent type reset for data-driven columns only
+- Customizable type inference with configurable sample percentages
 
 ### ⚡ **Lightning-Fast Performance**
 - **Chunked Processing**: Handle files with millions of rows without breaking a sweat
 - **Intelligent Caching**: Loads data once, uses it everywhere
 - **Progressive Loading**: See your data while it's still loading
+- **Background Threading**: UI stays responsive during heavy operations
 
 ### 🎨 **Beautiful & Intuitive Interface**
-- Clean, modern GUI that doesn't hurt your eyes
-- Real-time data preview
-- Progress dialogs for long operations
-- Light blue theme that's easy on the eyes
+- Clean, modern GUI with light blue theme that's easy on the eyes
+- Enhanced data preview with alternating row colors and smart column sizing
+- Real-time progress dialogs for long operations
+- Responsive design that adapts to your data
 
 ### 🛠️ **Powerful Customization**
-- **Column Naming Conventions**: CamelCase, snake_case, UPPERCASE, lowercase
-- **Primary Key Support**: INT IDENTITY and UNIQUEIDENTIFIER options
+- **Dynamic Primary Key Support**: INT IDENTITY and UNIQUEIDENTIFIER options appear automatically in dropdowns when primary key is selected
+- **Column Naming Conventions**: CamelCase, snake_case, UPPERCASE, lowercase transformations
+- **Flexible Column Management**: Add custom columns with independent type selection
+- **Smart Type Reset**: Reset only original data-driven column types, preserve manual additions
 - **Batch INSERT Statements**: Configurable batch sizes for optimal performance
 - **Schema & Database Support**: Full SQL Server compatibility
 
-### 📁 **File Format Support**
-- CSV files
-- Tab-delimited files
-- Custom delimiters (|, ;, :, ^, and more!)
-- Large file optimization (50,000+ rows)
+### 📁 **Advanced File Handling**
+- **Multi-format Support**: CSV, TSV, and custom delimiter files (|, ;, :, ^, and more!)
+- **Auto-delimiter Detection**: Intelligent detection of file delimiters
+- **Large File Optimization**: Automatic handling for 50,000+ row files
+- **Configurable Preview**: Adjustable preview percentages for data inspection
+- **Memory Efficient**: Optimized for minimal memory footprint with chunked processing
 
 ---
 
@@ -74,17 +77,19 @@ tkinter (usually comes with Python)
 1. **📂 Select Your Data File**
    - Click "Browse" and select your CSV/TXT file
    - Watch as the delimiter is automatically detected
-   - Preview your data with adjustable sample percentage
+   - Preview your data with adjustable sample percentage (1-100%)
 
 2. **⚙️ Configure Your Table**
-   - Set database and schema names
-   - Let the smart type inference do its magic, or customize manually
-   - Choose primary keys and configure options
+   - Set database, schema, and table names
+   - Let smart type inference work its magic, or customize manually
+   - Select primary key columns to unlock INT IDENTITY and UNIQUEIDENTIFIER options
+   - Add custom columns as needed
+   - Apply column naming conventions (CamelCase, snake_case, etc.)
 
 3. **💾 Generate SQL Scripts**
-   - CREATE TABLE statements
-   - INSERT INTO statements (with optional batching)
-   - Save and use in your favorite SQL environment!
+   - CREATE TABLE statements with proper constraints
+   - INSERT INTO statements with optional batching and TRUNCATE
+   - Save scripts and use in your favorite SQL environment!
 
 ---
 
@@ -94,14 +99,17 @@ tkinter (usually comes with Python)
 
 | Feature | Description |
 |---------|-------------|
+| **Dynamic Primary Keys** | INT IDENTITY and UNIQUEIDENTIFIER automatically available when PK is selected |
 | **Batch INSERT** | Configurable batch sizes (default: 500 rows) |
 | **Large File Mode** | Automatic optimization for 50,000+ row files |
-| **Type Inference** | Statistical sampling with customizable percentage |
+| **Smart Type Inference** | Statistical sampling with customizable percentage |
 | **TRUNCATE Option** | Optional table truncation before INSERT |
 | **Multi-threading** | Background processing for smooth UI experience |
+| **Intelligent Reset** | Reset only original column types, preserve manual additions |
 
-### 🎨 Column Naming Conventions
+### 🎨 Column Management
 
+#### Naming Conventions
 Transform your column names instantly:
 
 ```
@@ -112,25 +120,23 @@ UPPERCASE: USERNAME
 lowercase: username
 ```
 
-### ⚡ Performance Optimization
+#### Primary Key Types
+When you select a column as a primary key (🔑), these options automatically appear:
+- **INT IDENTITY**: Auto-incrementing integer primary key
+- **UNIQUEIDENTIFIER**: GUID-based primary key
 
-- **Smart Caching**: Files are loaded once and cached for multiple operations
-- **Chunked Reading**: Large files are processed in manageable chunks
+#### Smart Type Reset
+- **Original Columns**: Reset to automatically inferred types from your data
+- **Manual Columns**: Preserve your custom types (never reset)
+- **Button State**: Only enabled when original column types are modified
+
+### ⚡ Performance Features
+
+- **Smart Caching**: Files loaded once and cached for multiple operations
+- **Chunked Reading**: Large files processed in manageable chunks
 - **Asynchronous Processing**: UI remains responsive during long operations
-- **Memory Efficient**: Optimized for minimal memory footprint
-
----
-
-## 🤝 Contributing
-
-We love contributions! Here's how you can help make SQL Table Builder Pro even more awesome:
-
-### 🐛 Found a Bug?
-1. Check if it's already reported in [Issues](https://github.com/jackworthen/sql-builder/issues)
-2. If not, create a new issue with:
-   - Clear description
-   - Steps to reproduce
-   - Your environment details
+- **Progress Tracking**: Real-time feedback for file operations
+- **Memory Optimization**: Efficient handling of large datasets
 
 ---
 
@@ -145,8 +151,11 @@ user_id,user_name,email,created_date,is_active
 
 ### Generated CREATE TABLE:
 ```sql
+USE [MyDatabase];
+GO
+
 CREATE TABLE [dbo].[users] (
-    [user_id] INT NOT NULL,
+    [user_id] INT IDENTITY NOT NULL,
     [user_name] NVARCHAR(50) NOT NULL,
     [email] NVARCHAR(255) NOT NULL,
     [created_date] DATETIME NOT NULL,
@@ -157,10 +166,14 @@ CREATE TABLE [dbo].[users] (
 
 ### Generated INSERT statements:
 ```sql
-INSERT INTO [dbo].[users] ([user_id], [user_name], [email], [created_date], [is_active])
+USE [MyDatabase];
+GO
+
+INSERT INTO [dbo].[users] ([user_name], [email], [created_date], [is_active])
 VALUES
-    (1, 'John Doe', 'john@email.com', '2023-01-15', 1),
-    (2, 'Jane Smith', 'jane@email.com', '2023-01-16', 0);
+    ('John Doe', 'john@email.com', '2023-01-15', 1),
+    ('Jane Smith', 'jane@email.com', '2023-01-16', 0);
+GO
 ```
 
 ---
@@ -169,14 +182,30 @@ VALUES
 
 ```
 sql-builder/
-├── 📄 sqlbuilder.py          # Main application file
-├── ⚙️ config_manager.py      # Configuration management
+├── 📄 sqlbuilder.py          # Main application with optimized processing
+├── ⚙️ config_manager.py      # Configuration and settings management
 ├── 🎨 sqlbuilder_icon.ico    # Application icon
-├── 📚 README.md              # This awesome file!
+├── 📚 README.md              # This comprehensive guide
 ├── 📋 requirements.txt       # Python dependencies
 └── 🧪 tests/                 # Test files (coming soon!)
-
 ```
+
+## 🔍 Technical Details
+
+### Data Processing Pipeline
+1. **File Analysis**: Automatic delimiter detection and file size estimation
+2. **Smart Caching**: Efficient data loading with sample-based type inference
+3. **Type Inference**: Statistical analysis of data patterns
+4. **UI Generation**: Dynamic interface based on data structure
+5. **Script Generation**: Optimized SQL output with chunked processing
+
+### Performance Optimizations
+- **Large File Handling**: Automatic switching to chunked processing for 50,000+ rows
+- **Memory Management**: Efficient caching and garbage collection
+- **Background Processing**: Multi-threaded operations for UI responsiveness
+- **Progressive Loading**: Incremental data loading with user feedback
+
+---
 
 ## 📄 License
 
@@ -187,7 +216,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **⭐ If this project helped you, please consider giving it a star! ⭐**
 
 *Developed by Jack Worthen [Jack Worthen](https://github.com/jackworthen)*
-
----
-
-**Happy SQL Building! 🎉**

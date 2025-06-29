@@ -478,6 +478,10 @@ class SQLTableBuilder:
         self.truncate_before_insert = tk.BooleanVar()
         self.infer_types_var = tk.BooleanVar(value=cfg["default_infer_types"])
         self.sample_percentage = cfg["sample_percentage"]
+        
+        # New table name configuration settings
+        self.use_filename_as_table_name = cfg.get("use_filename_as_table_name", True)
+        self.custom_table_name = cfg.get("custom_table_name", "")
 
         self.apply_config_settings()
 
@@ -707,8 +711,8 @@ class SQLTableBuilder:
                 # Infer delimiter for CSV files
                 self.infer_delimiter()
             
-            default_name = os.path.splitext(os.path.basename(selected_path))[0]
-            self.table_name.set(default_name)
+            # Set table name based on configuration
+            self.set_table_name_from_config(selected_path)
             
             # Clear any existing cached data when new file is selected
             self.data_cache.clear()
@@ -719,6 +723,16 @@ class SQLTableBuilder:
             # Clear any existing preview
             for widget in self.preview_frame.winfo_children():
                 widget.destroy()
+
+    def set_table_name_from_config(self, file_path):
+        """Set table name based on configuration settings"""
+        if self.use_filename_as_table_name:
+            # Use filename as table name (current behavior)
+            default_name = os.path.splitext(os.path.basename(file_path))[0]
+            self.table_name.set(default_name)
+        else:
+            # Use custom table name from config
+            self.table_name.set(self.custom_table_name)
 
     def infer_delimiter(self):
         possible_delimiters = [',', '|', '\t', ';', ':', '^']
@@ -1662,6 +1676,10 @@ class SQLTableBuilder:
         self.truncate_before_insert.set(cfg.get("default_truncate", False))
         self.batch_insert_var.set(cfg.get("default_batch_insert", True))
         self.max_additional_columns = int(cfg.get("max_additional_columns", 1))
+
+        # Load new table name configuration settings
+        self.use_filename_as_table_name = cfg.get("use_filename_as_table_name", True)
+        self.custom_table_name = cfg.get("custom_table_name", "")
 
         # Update truncate color if the checkbox widget exists
         try:

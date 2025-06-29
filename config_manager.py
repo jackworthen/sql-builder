@@ -42,7 +42,9 @@ class ConfigManager:
             "default_include_insert": True,
             "default_batch_insert": False,
             "default_truncate": False,
-            "insert_batch_size": 5000
+            "insert_batch_size": 5000,
+            "use_filename_as_table_name": True,
+            "custom_table_name": ""
         }
         self.load()
 
@@ -86,7 +88,7 @@ class ConfigManager:
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
         window.title("Settings")
-        window.geometry("350x450")
+        window.geometry("350x520")
         window.resizable(False, False)
         
         # Center the window
@@ -181,12 +183,44 @@ class ConfigManager:
         
         # Schema Name - horizontal layout
         schema_input_frame = ttk.Frame(defaults_frame)
-        schema_input_frame.pack(fill=tk.X)
+        schema_input_frame.pack(fill=tk.X, pady=(0, 10))
         ttk.Label(schema_input_frame, text="Schema Name:").pack(side=tk.LEFT)
         schema_entry = ttk.Entry(schema_input_frame, width=25)
         schema_entry.insert(0, str(self.config.get("default_schema", "dbo")))
         schema_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["default_schema"] = schema_entry
+        
+        # Use Filename as Table Name checkbox
+        use_filename_var = tk.BooleanVar(value=self.config.get("use_filename_as_table_name", True))
+        use_filename_cb = ttk.Checkbutton(defaults_frame, text="Use Filename as Table Name", 
+                                         variable=use_filename_var)
+        use_filename_cb.pack(anchor=tk.W, pady=(0, 10))
+        entries["use_filename_as_table_name"] = use_filename_var
+        
+        # Custom Table Name - horizontal layout
+        table_input_frame = ttk.Frame(defaults_frame)
+        table_input_frame.pack(fill=tk.X)
+        table_label = ttk.Label(table_input_frame, text="Table Name:")
+        table_label.pack(side=tk.LEFT)
+        table_entry = ttk.Entry(table_input_frame, width=25)
+        table_entry.insert(0, str(self.config.get("custom_table_name", "")))
+        table_entry.pack(side=tk.LEFT, padx=(10, 0))
+        entries["custom_table_name"] = table_entry
+        
+        # Add callback to enable/disable table name input based on checkbox
+        def toggle_table_name(*args):
+            if use_filename_var.get():
+                table_label.configure(state='disabled')
+                table_entry.configure(state='disabled')
+            else:
+                table_label.configure(state='normal')
+                table_entry.configure(state='normal')
+        
+        # Set initial state based on checkbox value
+        toggle_table_name()
+        
+        # Monitor changes to use_filename_var and call toggle_table_name when it changes
+        use_filename_var.trace('w', toggle_table_name)
         
         # Column Settings (moved from processing tab)
         col_frame = ttk.LabelFrame(parent, text="Column Configuration", padding="15")

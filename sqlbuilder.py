@@ -1551,14 +1551,7 @@ class SQLTableBuilder:
                 type_indicator = tk.Label(header_section, text=indicator_text, 
                                         font=('Arial', 8), bg=bg_color, fg=fg_color, 
                                         relief='solid', bd=1, padx=6, pady=2)
-                type_indicator.pack(side='right', padx=(5, 10), pady=6)
-                
-                # Add large file mode indicator if applicable (additional indicator)
-                if self.data_cache.file_info.get('is_large_file'):
-                    large_file_indicator = tk.Label(header_section, text="🔍 Large File", 
-                                                  font=('Arial', 8), bg='#FFF3CD', fg='#856404', 
-                                                  relief='solid', bd=1, padx=6, pady=2)
-                    large_file_indicator.pack(side='right', padx=(5, 0), pady=6)
+                type_indicator.pack(side='right', padx=10, pady=6)
 
             # Table container with improved scrollbars
             table_container = tk.Frame(main_container, bg='#FFFFFF')

@@ -268,7 +268,7 @@ class ConfigManager:
         insert_frame.pack(fill=tk.X)
         
         batch_var = tk.BooleanVar(value=self.config.get("default_batch_insert", False))
-        batch_cb = ttk.Checkbutton(insert_frame, text="Enable Batch Insert", 
+        batch_cb = ttk.Checkbutton(insert_frame, text="Enable Batch INSERT", 
                                   variable=batch_var)
         batch_cb.pack(anchor=tk.W, pady=(0, 10))
         entries["default_batch_insert"] = batch_var

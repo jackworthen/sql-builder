@@ -952,15 +952,23 @@ class SQLTableBuilder:
             info_frame.pack(fill="x", pady=(5, 0))
             file_info = self.data_cache.file_info
             
+            # Get the full filename from the file path
+            file_path = file_info.get('file_path', '')
+            filename = os.path.basename(file_path) if file_path else "Unknown"
+            
             # Display different info based on file type
             if file_info.get('file_type') == 'json':
                 rows_text = f"{file_info['total_rows']:,}"
-                type_text = "JSON"
             else:
                 rows_text = f"~{file_info['estimated_rows']:,}" if file_info['is_large_file'] else f"{file_info['total_rows']:,}"
-                type_text = "CSV"
             
-            tk.Label(info_frame, text=f"Total Rows: {rows_text} ({type_text})", fg="black", font=('Arial', 9)).pack(side="left", padx=10)
+            # Row count label
+            tk.Label(info_frame, text=f"Total Rows: {rows_text}", fg="black", font=('Arial', 9)).pack(side="left", padx=10)
+            
+            # Filename label on a new line
+            filename_frame = tk.Frame(script_frame)
+            filename_frame.pack(fill="x", pady=(0, 0))
+            tk.Label(filename_frame, text=filename, fg="gray", font=('Arial', 8)).pack(side="left", padx=10)
         
         self.update_truncate_enable_state()
 
@@ -1515,16 +1523,42 @@ class SQLTableBuilder:
             
             # File type indicator
             if self.data_cache.file_info:
+                file_path = self.data_cache.file_info.get('file_path', '')
+                file_extension = os.path.splitext(file_path)[1].upper().lstrip('.')
+                
+                # Determine the display text and styling based on file type
                 if self.data_cache.file_info.get('file_type') == 'json':
-                    type_indicator = tk.Label(header_section, text="📄 JSON File", 
-                                            font=('Arial', 8), bg='#D4EDDA', fg='#155724', 
-                                            relief='solid', bd=1, padx=6, pady=2)
-                    type_indicator.pack(side='right', padx=10, pady=6)
-                elif self.data_cache.file_info.get('is_large_file'):
-                    type_indicator = tk.Label(header_section, text="🔍 Large File Mode", 
-                                            font=('Arial', 8), bg='#FFF3CD', fg='#856404', 
-                                            relief='solid', bd=1, padx=6, pady=2)
-                    type_indicator.pack(side='right', padx=10, pady=6)
+                    indicator_text = "📄 JSON File"
+                    bg_color = '#D4EDDA'
+                    fg_color = '#155724'
+                elif file_extension == 'CSV':
+                    indicator_text = "📊 CSV File"
+                    bg_color = '#D1ECF1'
+                    fg_color = '#0C5460'
+                elif file_extension == 'TXT':
+                    indicator_text = "📝 TXT File"
+                    bg_color = '#E2E3E5'
+                    fg_color = '#383D41'
+                elif file_extension == 'DAT':
+                    indicator_text = "💾 DAT File"
+                    bg_color = '#F8D7DA'
+                    fg_color = '#721C24'
+                else:
+                    indicator_text = f"📄 {file_extension} File" if file_extension else "📄 Data File"
+                    bg_color = '#E7F3FF'
+                    fg_color = '#004085'
+                
+                type_indicator = tk.Label(header_section, text=indicator_text, 
+                                        font=('Arial', 8), bg=bg_color, fg=fg_color, 
+                                        relief='solid', bd=1, padx=6, pady=2)
+                type_indicator.pack(side='right', padx=(5, 10), pady=6)
+                
+                # Add large file mode indicator if applicable (additional indicator)
+                if self.data_cache.file_info.get('is_large_file'):
+                    large_file_indicator = tk.Label(header_section, text="🔍 Large File", 
+                                                  font=('Arial', 8), bg='#FFF3CD', fg='#856404', 
+                                                  relief='solid', bd=1, padx=6, pady=2)
+                    large_file_indicator.pack(side='right', padx=(5, 0), pady=6)
 
             # Table container with improved scrollbars
             table_container = tk.Frame(main_container, bg='#FFFFFF')

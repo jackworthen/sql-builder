@@ -744,9 +744,9 @@ class SQLTableBuilder:
             type_combo.pack(side="left", padx=5)
             
             # Simple event bindings that actually work
-            type_combo.bind("<<ComboboxSelected>>", lambda e: self.enable_reset_button())
-            type_combo.bind("<KeyRelease>", lambda e: self.enable_reset_button())
-            type_combo.bind("<Button-1>", lambda e: self.enable_reset_button())
+            type_combo.bind("<<ComboboxSelected>>", lambda e, idx=index: self.enable_reset_button(idx))
+            type_combo.bind("<KeyRelease>", lambda e, idx=index: self.enable_reset_button(idx))
+            type_combo.bind("<Button-1>", lambda e, idx=index: self.enable_reset_button(idx))
 
             null_checkbox = tk.Checkbutton(row, variable=null_var, command=lambda idx=index: self.update_null_states(idx))
             null_checkbox.pack(side="left")
@@ -901,10 +901,17 @@ class SQLTableBuilder:
         except AttributeError:
             pass
 
-    def enable_reset_button(self):
-        """Enable the reset button"""
+    def enable_reset_button(self, column_index=None):
+        """Enable the reset button only if an original column is modified"""
         if hasattr(self, 'reset_button') and self.reset_button.winfo_exists():
-            self.reset_button.config(state="normal")
+            # Only enable if this is an original column (not manually added)
+            if column_index is not None and hasattr(self, 'headers'):
+                if column_index < len(self.headers):  # Original column
+                    self.reset_button.config(state="normal")
+                # If it's a manually added column, don't enable the reset button
+            else:
+                # Fallback for cases where index isn't provided
+                self.reset_button.config(state="normal")
 
     def generate_sql_file(self):
         table_name = self.table_name.get().strip()
@@ -1080,13 +1087,10 @@ class SQLTableBuilder:
                     combo.delete(0, "end")
                     combo.insert(0, inferred_type)
             
-            # Clear added columns' data types
-            for i in range(original_column_count, len(self.type_entries)):
-                combo = self.type_entries[i]
-                combo.delete(0, "end")
+            # Leave manually added columns' data types unchanged
             
-            # Keep reset button enabled for future use
-            self.reset_button.config(state="normal")
+            # Disable reset button after resetting
+            self.reset_button.config(state="disabled")
                 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to reset data types: {e}")
@@ -1124,10 +1128,7 @@ class SQLTableBuilder:
                                 combo.delete(0, "end")
                                 combo.insert(0, inferred_type)
                         
-                        # Clear added columns' data types
-                        for i in range(original_column_count, len(self.type_entries)):
-                            combo = self.type_entries[i]
-                            combo.delete(0, "end")
+                        # Leave manually added columns' data types unchanged
                         
                         # Enable the reset button after type inference (initial or user-initiated)
                         self.reset_button.config(state="normal")
@@ -1486,9 +1487,9 @@ class SQLTableBuilder:
         type_combo.pack(side="left", padx=5)
         
         # Simple event bindings that actually work
-        type_combo.bind("<<ComboboxSelected>>", lambda e: self.enable_reset_button())
-        type_combo.bind("<KeyRelease>", lambda e: self.enable_reset_button())
-        type_combo.bind("<Button-1>", lambda e: self.enable_reset_button())
+        type_combo.bind("<<ComboboxSelected>>", lambda e, idx=new_index: self.enable_reset_button(idx))
+        type_combo.bind("<KeyRelease>", lambda e, idx=new_index: self.enable_reset_button(idx))
+        type_combo.bind("<Button-1>", lambda e, idx=new_index: self.enable_reset_button(idx))
 
         null_checkbox = tk.Checkbutton(row, variable=null_var, command=lambda idx=new_index: self.update_null_states(idx))
         null_checkbox.pack(side="left")

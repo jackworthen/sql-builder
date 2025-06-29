@@ -6,7 +6,7 @@
 
 ## 🌟 What is SQL Table Builder Pro?
 
-SQL Table Builder Pro is a powerful, user-friendly desktop application that transforms your messy data files into pristine SQL scripts faster than you can say "SELECT * FROM awesome_table". Whether you're dealing with tiny datasets or massive files, this tool has got your back!
+SQL Table Builder Pro is a powerful, user-friendly desktop application that transforms your messy data files into pristine SQL scripts. Whether you're dealing with tiny datasets or massive files, this tool has got your back!
 
 ## 🎮 Features That'll Make You Smile
 

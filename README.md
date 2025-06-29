@@ -37,7 +37,7 @@ SQL Table Builder Pro is a powerful, user-friendly desktop application that tran
 - **Schema & Database Support**: Full SQL Server compatibility
 
 ### 📁 **Advanced File Handling**
-- **Multi-format Support**: CSV, TSV, and custom delimiter files (|, ;, :, ^, and more!)
+- **Multi-format Support**: CSV, TXT, DAT, JSON, and custom delimiter files (|, ;, :, ^, and more!)
 - **Auto-delimiter Detection**: Intelligent detection of file delimiters
 - **Large File Optimization**: Automatic handling for 50,000+ row files
 - **Configurable Preview**: Adjustable preview percentages for data inspection
@@ -75,7 +75,7 @@ tkinter (usually comes with Python)
 ### 🎯 Usage in 3 Easy Steps
 
 1. **📂 Select Your Data File**
-   - Click "Browse" and select your CSV/TXT file
+   - Click "Browse" and select your data file
    - Watch as the delimiter is automatically detected
    - Preview your data with adjustable sample percentage (1-100%)
 

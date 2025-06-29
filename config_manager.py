@@ -88,7 +88,7 @@ class ConfigManager:
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
         window.title("Settings")
-        window.geometry("350x520")
+        window.geometry("350x480")
         window.resizable(False, False)
         
         # Center the window
@@ -112,17 +112,17 @@ class ConfigManager:
         # Dictionary to store all entry widgets
         entries = {}
         
+        # Database Configuration Tab (moved to first position)
+        db_frame = ttk.Frame(notebook, padding="20")
+        notebook.add(db_frame, text="Database")
+        
+        self._create_database_tab(db_frame, entries)
+        
         # Data Processing Tab  
         processing_frame = ttk.Frame(notebook, padding="20")
         notebook.add(processing_frame, text="Data Processing")
         
         self._create_processing_tab(processing_frame, entries)
-        
-        # Database Configuration Tab
-        db_frame = ttk.Frame(notebook, padding="20")
-        notebook.add(db_frame, text="Database")
-        
-        self._create_database_tab(db_frame, entries)
         
         # SQL Generation Tab
         sql_frame = ttk.Frame(notebook, padding="20")
@@ -164,7 +164,7 @@ class ConfigManager:
     def _create_database_tab(self, parent, entries):
         """Create database configuration section"""
         # Title
-        title_label = ttk.Label(parent, text="Database Connection Settings", 
+        title_label = ttk.Label(parent, text="Database Configuration", 
                                font=('TkDefaultFont', 10, 'bold'))
         title_label.pack(anchor=tk.W, pady=(0, 15))
         
@@ -314,7 +314,8 @@ class ConfigManager:
         # Batch Size Input - horizontal layout
         batch_input_frame = ttk.Frame(insert_frame)
         batch_input_frame.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(batch_input_frame, text="Insert Batch Size:").pack(side=tk.LEFT)
+        batch_label = ttk.Label(batch_input_frame, text="Insert Batch Size:")
+        batch_label.pack(side=tk.LEFT)
         batch_entry = ttk.Entry(batch_input_frame, width=12)
         batch_entry.insert(0, str(self.config.get("insert_batch_size", 5000)))
         batch_entry.pack(side=tk.LEFT, padx=(10, 0))
@@ -323,8 +324,10 @@ class ConfigManager:
         # Add callback to enable/disable batch size based on batch checkbox
         def toggle_batch_size(*args):
             if batch_var.get():
+                batch_label.configure(state='normal')
                 batch_entry.configure(state='normal')
             else:
+                batch_label.configure(state='disabled')
                 batch_entry.configure(state='disabled')
         
         # Set initial state based on checkbox value

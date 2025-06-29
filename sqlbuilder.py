@@ -667,11 +667,7 @@ class SQLTableBuilder:
                   width=4, 
                   command=self.apply_column_naming_convention).pack(side="left", padx=5)
         
-        self.reset_button = ttk.Button(rename_frame, text="Reset Types", 
-                                      style='Small.TButton',
-                                      command=self.reset_data_types_immediately, 
-                                      state="disabled")
-        self.reset_button.pack(side="left", padx=5)    
+    
 
         # === COLUMN DEFINITION SECTION ===
         column_frame = tk.LabelFrame(self.master, text="Define Table Columns", padx=10, pady=10)
@@ -691,6 +687,12 @@ class SQLTableBuilder:
                                               command=self.remove_last_column,
                                               state="disabled")
         self.remove_column_button.pack(side="left")
+        
+        self.reset_button = ttk.Button(column_buttons_frame, text="Reset Types", 
+                                      style='Small.TButton',
+                                      command=self.reset_data_types_immediately, 
+                                      state="disabled")
+        self.reset_button.pack(side="left", padx=(15, 0))
 
         canvas = tk.Canvas(column_frame, highlightthickness=0)  # Remove focus highlight
         scrollbar = tk.Scrollbar(column_frame, orient="vertical", command=canvas.yview)

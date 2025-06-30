@@ -984,12 +984,10 @@ class SQLTableBuilder:
                 rows_text = f"~{file_info['estimated_rows']:,}" if file_info['is_large_file'] else f"{file_info['total_rows']:,}"
             
             # Row count label
-            tk.Label(info_frame, text=f"Total Rows: {rows_text}", fg="black", font=('Arial', 9)).pack(side="left", padx=10)
+            tk.Label(info_frame, text=f"Total Rows: {rows_text}", fg="black", font=('Arial', 9)).pack(side="left", padx=(10, 2))
             
-            # Filename label on a new line
-            filename_frame = tk.Frame(script_frame)
-            filename_frame.pack(fill="x", pady=(0, 0))
-            tk.Label(filename_frame, text=filename, fg="gray", font=('Arial', 8)).pack(side="left", padx=10)
+            # Filename label on the same line
+            tk.Label(info_frame, text=f"| {filename}", fg="gray", font=('Arial', 9)).pack(side="left", padx=(2, 10))
         
         self.update_truncate_enable_state()
         self.update_truncate_color()  # Ensure initial color is set correctly

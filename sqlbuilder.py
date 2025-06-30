@@ -813,7 +813,7 @@ class SQLTableBuilder:
       
     def build_column_type_screen(self):
         self.additional_column_count = 0
-        self.master.geometry("530x800")
+        self.master.geometry("515x800")
         for widget in self.master.winfo_children():
             widget.destroy()
 
@@ -962,10 +962,6 @@ class SQLTableBuilder:
         self.include_insert_script.trace_add("write", self.update_truncate_enable_state)
         self.batch_insert_check = tk.Checkbutton(checkbox_row, text=f"Batch INSERT ({self.insert_batch_size})", variable=self.batch_insert_var)
         self.batch_insert_check.pack(side="left", padx=5)
-        ttk.Button(checkbox_row, text="Save", 
-                  style='Success.TButton',
-                  width=9, 
-                  command=self.handle_generate_scripts).pack(side="right", padx=10)
         
         # File info display (rows count) - positioned beneath Batch INSERT
         if self.data_cache.is_loaded:
@@ -1000,6 +996,10 @@ class SQLTableBuilder:
                   style='Secondary.TButton',
                   width=8, 
                   command=self.build_file_selection_screen).pack(side="left", padx=10)
+        ttk.Button(back_frame, text="Save", 
+                  style='Success.TButton',
+                  width=9, 
+                  command=self.handle_generate_scripts).pack(side="left", padx=10)
         ttk.Button(back_frame, text="Exit", 
                   style='Secondary.TButton',
                   width=8, 

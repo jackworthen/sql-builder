@@ -283,13 +283,13 @@ class ConfigManager:
         gen_frame.pack(fill=tk.X, pady=(0, 15))
         
         create_var = tk.BooleanVar(value=self.config.get("default_include_create", True))
-        create_cb = ttk.Checkbutton(gen_frame, text="Include CREATE TABLE statements", 
+        create_cb = ttk.Checkbutton(gen_frame, text="Enable CREATE TABLE statements", 
                                    variable=create_var)
         create_cb.pack(anchor=tk.W, pady=(0, 10))
         entries["default_include_create"] = create_var
         
         insert_var = tk.BooleanVar(value=self.config.get("default_include_insert", True))
-        insert_cb = ttk.Checkbutton(gen_frame, text="Include INSERT statements", 
+        insert_cb = ttk.Checkbutton(gen_frame, text="Enable INSERT statements", 
                                    variable=insert_var)
         insert_cb.pack(anchor=tk.W)
         entries["default_include_insert"] = insert_var

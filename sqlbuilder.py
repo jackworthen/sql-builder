@@ -679,23 +679,31 @@ class SQLTableBuilder:
         action_frame = tk.Frame(main_frame)
         action_frame.pack(pady=15, fill="x")
         
-        # Clear button - now positioned to the left of Next button
-        ttk.Button(action_frame, text="Clear", 
+        # Settings button - positioned to the left
+        ttk.Button(action_frame, text="Settings", 
                   style='Secondary.TButton',
                   width=8, 
-                  command=self.clear_data).pack(side="left")
+                  command=lambda: self.config_mgr.open_settings_window(self.master, self.apply_config_settings)).pack(side="left")
         
+        # Clear button - disabled until file is selected
+        self.clear_button = ttk.Button(action_frame, text="Clear", 
+                                      style='Secondary.TButton',
+                                      width=8, state="disabled",
+                                      command=self.clear_data)
+        self.clear_button.pack(side="left", padx=(10, 0))
+        
+        # Exit button - moved to middle position
+        ttk.Button(action_frame, text="Exit", 
+                  style='Secondary.TButton',
+                  width=8, 
+                  command=self.safe_exit).pack(side="left", padx=(10, 0))
+        
+        # Next button - moved to the right side
         self.next_button = ttk.Button(action_frame, text="Next →", 
                                      style='Primary.TButton',
                                      width=8, state="disabled", 
                                      command=self.process_file)
-        self.next_button.pack(side="left", padx=(10, 0))
-        
-        # Exit button on the right side
-        ttk.Button(action_frame, text="Exit", 
-                  style='Secondary.TButton',
-                  width=8, 
-                  command=self.safe_exit).pack(side="right")
+        self.next_button.pack(side="right")
                 
     def browse_file(self):
         # Updated to include JSON files
@@ -722,6 +730,7 @@ class SQLTableBuilder:
             
             self.next_button.config(state="normal")
             self.show_button.config(state="normal")
+            self.clear_button.config(state="normal")  # Enable Clear button when file is selected
             
             # Clear any existing preview
             for widget in self.preview_frame.winfo_children():
@@ -769,6 +778,7 @@ class SQLTableBuilder:
         # Disable buttons until new file is selected
         self.show_button.config(state="disabled")
         self.next_button.config(state="disabled")
+        self.clear_button.config(state="disabled")  # Disable Clear button after clearing
 
     def process_file(self):
         """Process file with progress dialog and caching"""
@@ -813,7 +823,7 @@ class SQLTableBuilder:
       
     def build_column_type_screen(self):
         self.additional_column_count = 0
-        self.master.geometry("515x800")
+        self.master.geometry("530x800")
         for widget in self.master.winfo_children():
             widget.destroy()
 

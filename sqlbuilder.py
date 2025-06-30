@@ -823,7 +823,7 @@ class SQLTableBuilder:
       
     def build_column_type_screen(self):
         self.additional_column_count = 0
-        self.master.geometry("530x800")
+        self.master.geometry("550x800")
         for widget in self.master.winfo_children():
             widget.destroy()
 
@@ -962,16 +962,14 @@ class SQLTableBuilder:
         checkbox_row = tk.Frame(script_frame)
         checkbox_row.pack(fill="x", pady=5)
 
-        truncate_row = tk.Frame(script_frame)
-        truncate_row.pack(fill="x", pady=2)
-        self.truncate_check = tk.Checkbutton(truncate_row, text="TRUNCATE", variable=self.truncate_before_insert, command=self.update_truncate_color)
-        self.truncate_check.pack(side="left", padx=10)
         tk.Checkbutton(checkbox_row, text="CREATE TABLE", variable=self.include_create_script).pack(side="left", padx=10)
         insert_checkbox = tk.Checkbutton(checkbox_row, text="INSERT INTO", variable=self.include_insert_script)
         insert_checkbox.pack(side="left", padx=10)
         self.include_insert_script.trace_add("write", self.update_truncate_enable_state)
         self.batch_insert_check = tk.Checkbutton(checkbox_row, text=f"Batch INSERT ({self.insert_batch_size})", variable=self.batch_insert_var)
         self.batch_insert_check.pack(side="left", padx=5)
+        self.truncate_check = tk.Checkbutton(checkbox_row, text="TRUNCATE", variable=self.truncate_before_insert, command=self.update_truncate_color)
+        self.truncate_check.pack(side="left", padx=10)
         
         # File info display (rows count) - positioned beneath Batch INSERT
         if self.data_cache.is_loaded:

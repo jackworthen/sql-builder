@@ -482,6 +482,9 @@ class SQLTableBuilder:
         # New table name configuration settings
         self.use_filename_as_table_name = cfg.get("use_filename_as_table_name", True)
         self.custom_table_name = cfg.get("custom_table_name", "")
+        
+        # NEW: Auto preview data setting
+        self.auto_preview_data = cfg.get("auto_preview_data", True)
 
         self.apply_config_settings()
 
@@ -723,6 +726,10 @@ class SQLTableBuilder:
             # Clear any existing preview
             for widget in self.preview_frame.winfo_children():
                 widget.destroy()
+            
+            # NEW: Automatically preview data if auto_preview_data is enabled
+            if self.auto_preview_data:
+                self.on_apply_preview_percentage()
 
     def set_table_name_from_config(self, file_path):
         """Set table name based on configuration settings"""
@@ -1680,6 +1687,9 @@ class SQLTableBuilder:
         # Load new table name configuration settings
         self.use_filename_as_table_name = cfg.get("use_filename_as_table_name", True)
         self.custom_table_name = cfg.get("custom_table_name", "")
+        
+        # NEW: Load auto preview data setting
+        self.auto_preview_data = cfg.get("auto_preview_data", True)
 
         # Update truncate color if the checkbox widget exists
         try:

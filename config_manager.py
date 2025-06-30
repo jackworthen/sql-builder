@@ -44,7 +44,8 @@ class ConfigManager:
             "default_truncate": False,
             "insert_batch_size": 5000,
             "use_filename_as_table_name": True,
-            "custom_table_name": ""
+            "custom_table_name": "",
+            "auto_preview_data": True
         }
         self.load()
 
@@ -252,6 +253,13 @@ class ConfigManager:
         # Sample Settings
         sample_frame = ttk.LabelFrame(parent, text="Data Sampling", padding="15")
         sample_frame.pack(fill=tk.X)
+        
+        # Auto Preview Data checkbox - NEW ADDITION at the top
+        auto_preview_var = tk.BooleanVar(value=self.config.get("auto_preview_data", True))
+        auto_preview_cb = ttk.Checkbutton(sample_frame, text="Automatically Preview Data", 
+                                         variable=auto_preview_var)
+        auto_preview_cb.pack(anchor=tk.W, pady=(0, 15))
+        entries["auto_preview_data"] = auto_preview_var
         
         # Default Preview Percentage - horizontal layout
         preview_input_frame = ttk.Frame(sample_frame)

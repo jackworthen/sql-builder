@@ -514,6 +514,12 @@ class SQLTableBuilder:
         
         # NEW: Auto preview data setting
         self.auto_preview_data = cfg.get("auto_preview_data", True)
+        
+        # NEW: Large file threshold setting
+        self.large_file_threshold_mb = cfg.get("large_file_threshold_mb", 1000)
+        
+        # Initialize large file indicator widget
+        self.large_file_indicator = None
 
         self.apply_config_settings()
 
@@ -617,6 +623,79 @@ class SQLTableBuilder:
         self.style.map('Preview.Treeview',
                       background=[('selected', '#E8F4FD')],
                       foreground=[('selected', '#2C3E50')])
+
+    def get_file_size_mb(self, file_path):
+        """Get file size in megabytes"""
+        try:
+            size_bytes = os.path.getsize(file_path)
+            size_mb = size_bytes / (1024 * 1024)  # Convert to MB
+            return size_mb
+        except Exception:
+            return 0
+
+    def format_file_size(self, size_mb):
+        """Format file size for display"""
+        if size_mb < 1:
+            return f"{size_mb * 1024:.1f} KB"
+        elif size_mb < 1024:
+            return f"{size_mb:.1f} MB"
+        else:
+            return f"{size_mb / 1024:.2f} GB"
+
+    def update_large_file_indicator(self, file_path=None):
+        """Show or hide the large file indicator based on file size"""
+        # Clear existing indicator
+        if self.large_file_indicator:
+            self.large_file_indicator.destroy()
+            self.large_file_indicator = None
+        
+        # If no file path provided, just clear the indicator
+        if not file_path:
+            return
+        
+        # Check file size
+        size_mb = self.get_file_size_mb(file_path)
+        
+        # Show indicator if file exceeds threshold
+        if size_mb >= self.large_file_threshold_mb:
+            # Find the preview frame to add the indicator to
+            try:
+                # Look for the preview_frame (which contains the preview controls)
+                for widget in self.master.winfo_children():
+                    if isinstance(widget, tk.Frame):
+                        for child in widget.winfo_children():
+                            if isinstance(child, tk.LabelFrame) and "Select Source File" in child.cget('text'):
+                                # Find the preview controls frame within the file group
+                                for subchild in child.winfo_children():
+                                    if isinstance(subchild, tk.Frame):
+                                        # Check if this frame contains preview controls
+                                        frame_children = subchild.winfo_children()
+                                        if len(frame_children) > 0:
+                                            # Look for a frame that contains preview controls
+                                            for frame_child in frame_children:
+                                                if isinstance(frame_child, tk.Frame):
+                                                    # This should be the preview_controls frame
+                                                    preview_controls_parent = subchild
+                                                    
+                                                    # Create the large file indicator
+                                                    size_text = self.format_file_size(size_mb)
+                                                    indicator_text = f"⚠️ Large File ({size_text})"
+                                                    
+                                                    self.large_file_indicator = tk.Label(
+                                                        preview_controls_parent, 
+                                                        text=indicator_text,
+                                                        font=('Arial', 8), 
+                                                        bg='#F8D7DA',  # Light red background
+                                                        fg='#721C24',  # Dark red text
+                                                        relief='solid', 
+                                                        bd=1, 
+                                                        padx=6, 
+                                                        pady=2
+                                                    )
+                                                    self.large_file_indicator.pack(side='right', padx=10, pady=6)
+                                                    return
+            except Exception as e:
+                print(f"Error creating large file indicator: {e}")
   
     def build_file_selection_screen(self):
         self.master.iconbitmap(resource_path('sqlbuilder_icon.ico'))  # This sets the icon
@@ -700,6 +779,8 @@ class SQLTableBuilder:
                                      width=12, state="disabled", 
                                      command=self.on_apply_preview_percentage)
         self.show_button.pack(side="left", padx=(8, 0))
+        
+        # Note: Large file indicator will be added dynamically to preview_frame
                 
         # Action button
         self.preview_frame = tk.LabelFrame(main_frame, text="Data Preview", padx=5, pady=5)
@@ -757,6 +838,9 @@ class SQLTableBuilder:
             # Clear any existing cached data when new file is selected
             self.data_cache.clear()
             
+            # Update large file indicator
+            self.update_large_file_indicator(selected_path)
+            
             self.next_button.config(state="normal")
             self.show_button.config(state="normal")
             self.clear_button.config(state="normal")  # Enable Clear button when file is selected
@@ -799,6 +883,9 @@ class SQLTableBuilder:
         
         # Clear cached data
         self.data_cache.clear()
+        
+        # Clear large file indicator
+        self.update_large_file_indicator()
         
         # Clear preview display
         for widget in self.preview_frame.winfo_children():
@@ -1781,6 +1868,14 @@ class SQLTableBuilder:
         
         # NEW: Load default column format setting  
         self.default_column_format = cfg.get("default_column_format", "Source File")
+        
+        # NEW: Load large file threshold setting
+        self.large_file_threshold_mb = cfg.get("large_file_threshold_mb", 1000)
+        
+        # Update large file indicator if a file is currently selected
+        current_file = self.file_path.get()
+        if current_file:
+            self.update_large_file_indicator(current_file)
 
         # Update truncate color if the checkbox widget exists
         try:

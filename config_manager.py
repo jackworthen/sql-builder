@@ -46,7 +46,8 @@ class ConfigManager:
             "use_filename_as_table_name": True,
             "custom_table_name": "",
             "auto_preview_data": True,
-            "default_column_format": "Source File"
+            "default_column_format": "Source File",
+            "large_file_threshold_mb": 1000
         }
         self.load()
 
@@ -90,7 +91,7 @@ class ConfigManager:
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
         window.title("Settings")
-        window.geometry("350x520")
+        window.geometry("350x570")  # Increased height to accommodate new setting
         window.resizable(False, False)
         
         # Center the window
@@ -286,12 +287,21 @@ class ConfigManager:
         
         # Sample Percentage for Analysis - horizontal layout
         sample_input_frame = ttk.Frame(sample_frame)
-        sample_input_frame.pack(fill=tk.X)
+        sample_input_frame.pack(fill=tk.X, pady=(0, 10))
         ttk.Label(sample_input_frame, text="Sample Percentage for Analysis:").pack(side=tk.LEFT)
         sample_entry = ttk.Entry(sample_input_frame, width=5)
         sample_entry.insert(0, str(self.config.get("sample_percentage", 15)))
         sample_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["sample_percentage"] = sample_entry
+        
+        # Large File Indicator Threshold - horizontal layout
+        large_file_input_frame = ttk.Frame(sample_frame)
+        large_file_input_frame.pack(fill=tk.X)
+        ttk.Label(large_file_input_frame, text="Large File Indicator (MB):").pack(side=tk.LEFT)
+        large_file_entry = ttk.Entry(large_file_input_frame, width=8)
+        large_file_entry.insert(0, str(self.config.get("large_file_threshold_mb", 1000)))
+        large_file_entry.pack(side=tk.LEFT, padx=(10, 0))
+        entries["large_file_threshold_mb"] = large_file_entry
 
     def _create_sql_tab(self, parent, entries):
         """Create SQL generation section"""
@@ -367,7 +377,7 @@ class ConfigManager:
                 elif isinstance(widget, ttk.Entry):
                     val = widget.get()
                     if key in ["default_preview_percentage", "sample_percentage", 
-                              "max_additional_columns", "insert_batch_size"]:
+                              "max_additional_columns", "insert_batch_size", "large_file_threshold_mb"]:
                         try:
                             self.config[key] = int(val)
                             if self.config[key] < 1:

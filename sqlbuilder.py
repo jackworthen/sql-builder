@@ -880,7 +880,7 @@ class SQLTableBuilder:
         tk.Label(table_frame, text="Table:", width=12, anchor="w").pack(side="left")
         tk.Entry(table_frame, width=40, textvariable=self.table_name).pack(side="left")
 
-        # Row for renaming dropdown and set button
+        # Row for renaming dropdown
         rename_frame = tk.Frame(settings_frame)
         rename_frame.pack(fill="x", pady=3)
         tk.Label(rename_frame, text="Column Format:").pack(side="left", padx=(5, 2))
@@ -890,10 +890,9 @@ class SQLTableBuilder:
                                         values=["Source File", "CamelCase", "snake_case", "lowercase", "UPPERCASE"], 
                                         width=15, state="readonly")
         self.naming_combo.pack(side="left", padx=2)
-        ttk.Button(rename_frame, text="Set", 
-                  style='Small.TButton',
-                  width=4, 
-                  command=self.apply_column_naming_convention).pack(side="left", padx=5)
+        
+        # Bind the dropdown selection to automatically apply the formatting
+        self.naming_combo.bind("<<ComboboxSelected>>", lambda e: self.apply_column_naming_convention())
         
     
 

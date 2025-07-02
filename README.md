@@ -15,18 +15,23 @@ SQL Table Builder Pro is a powerful, user-friendly desktop application that tran
 - Supports INT, FLOAT, DATETIME, VARCHAR, BIT, and more
 - Intelligent type reset for data-driven columns only
 - Customizable type inference with configurable sample percentages
+- Dynamic VARCHAR length optimization based on actual data content
 
 ### ⚡ **Lightning-Fast Performance**
 - **Chunked Processing**: Handle files with millions of rows without breaking a sweat
 - **Intelligent Caching**: Loads data once, uses it everywhere
 - **Progressive Loading**: See your data while it's still loading
 - **Background Threading**: UI stays responsive during heavy operations
+- **Memory-Efficient Large File Handling**: Configurable file size thresholds (MB-based)
 
 ### 🎨 **Beautiful & Intuitive Interface**
 - Clean, modern GUI with light blue theme that's easy on the eyes
 - Enhanced data preview with alternating row colors and smart column sizing
 - Real-time progress dialogs for long operations
 - Responsive design that adapts to your data
+- **Menu System**: File, Edit, and Help menus with full keyboard shortcut support
+- **Large File Indicators**: Visual warnings and file size display for large datasets
+- **Tabbed Settings Interface**: Organized configuration across multiple categories
 
 ### 🛠️ **Powerful Customization**
 - **Dynamic Primary Key Support**: INT IDENTITY and UNIQUEIDENTIFIER options appear automatically in dropdowns when primary key is selected
@@ -35,12 +40,14 @@ SQL Table Builder Pro is a powerful, user-friendly desktop application that tran
 - **Smart Type Reset**: Reset only original data-driven column types, preserve manual additions
 - **Batch INSERT Statements**: Configurable batch sizes for optimal performance
 - **Schema & Database Support**: Full SQL Server compatibility
+- **Persistent Settings**: Platform-specific configuration storage with JSON persistence
 
 ### 📁 **Advanced File Handling**
-- **Multi-format Support**: CSV, TXT, DAT, JSON, and custom delimiter files (|, ;, :, ^, and more!)
-- **Auto-delimiter Detection**: Intelligent detection of file delimiters
-- **Large File Optimization**: Automatic handling for 50,000+ row files
-- **Configurable Preview**: Adjustable preview percentages for data inspection
+- **Multi-format Support**: CSV, TXT, DAT, JSON, and custom delimiter files (|, ;, :, ^, tab, space, and more!)
+- **Auto-delimiter Detection**: Intelligent detection of file delimiters with descriptive display names
+- **JSON Processing**: Full nested object flattening with dot notation, array handling (objects and primitives)
+- **Large File Optimization**: Configurable MB-based thresholds with automatic handling
+- **Configurable Preview**: Adjustable preview percentages for data inspection with auto-preview option
 - **Memory Efficient**: Optimized for minimal memory footprint with chunked processing
 
 ---
@@ -78,6 +85,7 @@ tkinter (usually comes with Python)
    - Click "Browse" and select your data file
    - Watch as the delimiter is automatically detected
    - Preview your data with adjustable sample percentage (1-100%)
+   - Auto-preview option loads data immediately upon file selection
 
 2. **⚙️ Configure Your Table**
    - Set database, schema, and table names
@@ -100,12 +108,15 @@ tkinter (usually comes with Python)
 | Feature | Description |
 |---------|-------------|
 | **Dynamic Primary Keys** | INT IDENTITY and UNIQUEIDENTIFIER automatically available when PK is selected |
-| **Batch INSERT** | Configurable batch sizes (default: 500 rows) |
-| **Large File Mode** | Automatic optimization for 50,000+ row files |
+| **Batch INSERT** | Configurable batch sizes (default: 5000 rows) |
+| **Large File Mode** | Configurable MB-based threshold with automatic optimization |
 | **Smart Type Inference** | Statistical sampling with customizable percentage |
-| **TRUNCATE Option** | Optional table truncation before INSERT |
+| **TRUNCATE Option** | Optional table truncation before INSERT with visual warning |
 | **Multi-threading** | Background processing for smooth UI experience |
 | **Intelligent Reset** | Reset only original column types, preserve manual additions |
+| **Auto-Preview Data** | Configurable automatic data preview on file selection |
+| **Table Naming** | Use filename or custom table names |
+| **Platform Config** | Cross-platform settings storage in appropriate system directories |
 
 ### 🎨 Column Management
 
@@ -118,6 +129,7 @@ CamelCase: UserName
 snake_case: user_name
 UPPERCASE: USERNAME
 lowercase: username
+Source File: User Name (original)
 ```
 
 #### Primary Key Types
@@ -137,6 +149,16 @@ When you select a column as a primary key (🔑), these options automatically ap
 - **Asynchronous Processing**: UI remains responsive during long operations
 - **Progress Tracking**: Real-time feedback for file operations
 - **Memory Optimization**: Efficient handling of large datasets
+- **Generator-based Processing**: Stream processing for extremely large files
+
+### 🎹 Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| **Ctrl+O** | Open File |
+| **Ctrl+S** | Settings |
+| **Ctrl+E** | Exit |
+| **Ctrl+D** | Documentation (GitHub) |
 
 ---
 
@@ -147,6 +169,25 @@ When you select a column as a primary key (🔑), these options automatically ap
 user_id,user_name,email,created_date,is_active
 1,John Doe,john@email.com,2023-01-15,true
 2,Jane Smith,jane@email.com,2023-01-16,false
+```
+
+### Input JSON:
+```json
+[
+  {
+    "user_id": 1,
+    "profile": {
+      "name": "John Doe",
+      "contact": {
+        "email": "john@email.com"
+      }
+    },
+    "metadata": {
+      "created_date": "2023-01-15",
+      "is_active": true
+    }
+  }
+]
 ```
 
 ### Generated CREATE TABLE:
@@ -195,15 +236,22 @@ sql-builder/
 ### Data Processing Pipeline
 1. **File Analysis**: Automatic delimiter detection and file size estimation
 2. **Smart Caching**: Efficient data loading with sample-based type inference
-3. **Type Inference**: Statistical analysis of data patterns
+3. **Type Inference**: Statistical analysis of data patterns with regex optimization
 4. **UI Generation**: Dynamic interface based on data structure
 5. **Script Generation**: Optimized SQL output with chunked processing
 
 ### Performance Optimizations
-- **Large File Handling**: Automatic switching to chunked processing for 50,000+ rows
+- **Large File Handling**: Configurable MB-based thresholds with automatic chunked processing
 - **Memory Management**: Efficient caching and garbage collection
 - **Background Processing**: Multi-threaded operations for UI responsiveness
 - **Progressive Loading**: Incremental data loading with user feedback
+- **JSON Processing**: Intelligent nested object flattening and array handling
+
+### Settings Management
+- **Tabbed Interface**: Configuration, Data Processing, and SQL Generation tabs
+- **Persistent Storage**: JSON-based configuration with platform-specific directories
+- **Validation**: Input validation for all numeric settings
+- **Real-time Updates**: Immediate application of setting changes
 
 ---
 
@@ -215,4 +263,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **⭐ If this project helped you, please consider giving it a star! ⭐**
 
-*Developed by Jack Worthen [Jack Worthen](https://github.com/jackworthen)*
+*Developed by [Jack Worthen](https://github.com/jackworthen)*

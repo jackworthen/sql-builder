@@ -45,7 +45,8 @@ class ConfigManager:
             "insert_batch_size": 5000,
             "use_filename_as_table_name": True,
             "custom_table_name": "",
-            "auto_preview_data": True
+            "auto_preview_data": True,
+            "default_column_format": "Source File"
         }
         self.load()
 
@@ -89,7 +90,7 @@ class ConfigManager:
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
         window.title("Settings")
-        window.geometry("350x480")
+        window.geometry("350x520")
         window.resizable(False, False)
         
         # Center the window
@@ -227,21 +228,34 @@ class ConfigManager:
         col_frame = ttk.LabelFrame(parent, text="Column Configuration", padding="15")
         col_frame.pack(fill=tk.X, pady=(0, 10))
         
+        # Type Inference (moved to top)
+        infer_var = tk.BooleanVar(value=self.config.get("default_infer_types", True))
+        infer_cb = ttk.Checkbutton(col_frame, text="Enable Data Type Inference", 
+                                  variable=infer_var)
+        infer_cb.pack(anchor=tk.W, pady=(0, 15))
+        entries["default_infer_types"] = infer_var
+        
+        # Default Column Format - horizontal layout
+        format_input_frame = ttk.Frame(col_frame)
+        format_input_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(format_input_frame, text="Default Column Format:").pack(side=tk.LEFT)
+        
+        # Column format options
+        column_format_options = ["Source File", "CamelCase", "snake_case", "lowercase", "UPPERCASE"]
+        format_var = tk.StringVar(value=self.config.get("default_column_format", "Source File"))
+        format_combo = ttk.Combobox(format_input_frame, textvariable=format_var, 
+                                   values=column_format_options, width=15, state="readonly")
+        format_combo.pack(side=tk.LEFT, padx=(10, 0))
+        entries["default_column_format"] = format_var
+        
         # Maximum Additional Columns - horizontal layout
         col_input_frame = ttk.Frame(col_frame)
-        col_input_frame.pack(fill=tk.X, pady=(0, 10))
+        col_input_frame.pack(fill=tk.X)
         ttk.Label(col_input_frame, text="Maximum Additional Columns:").pack(side=tk.LEFT)
         col_entry = ttk.Entry(col_input_frame, width=5)
         col_entry.insert(0, str(self.config.get("max_additional_columns", 1)))
         col_entry.pack(side=tk.LEFT, padx=(10, 0))
         entries["max_additional_columns"] = col_entry
-        
-        # Type Inference
-        infer_var = tk.BooleanVar(value=self.config.get("default_infer_types", True))
-        infer_cb = ttk.Checkbutton(col_frame, text="Enable Data Type Inference", 
-                                  variable=infer_var)
-        infer_cb.pack(anchor=tk.W)
-        entries["default_infer_types"] = infer_var
 
     def _create_processing_tab(self, parent, entries):
         """Create data processing section"""
@@ -348,7 +362,7 @@ class ConfigManager:
         """Save configuration changes"""
         try:
             for key, widget in entries.items():
-                if isinstance(widget, tk.BooleanVar):
+                if isinstance(widget, (tk.BooleanVar, tk.StringVar)):
                     self.config[key] = widget.get()
                 elif isinstance(widget, ttk.Entry):
                     val = widget.get()

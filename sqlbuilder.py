@@ -856,7 +856,7 @@ class SQLTableBuilder:
         rename_frame = tk.Frame(settings_frame)
         rename_frame.pack(fill="x", pady=3)
         tk.Label(rename_frame, text="Column Format:").pack(side="left", padx=(5, 2))
-        self.naming_style_var = tk.StringVar(value="Source File")
+        self.naming_style_var = tk.StringVar(value=self.config_mgr.config.get("default_column_format", "Source File"))
         # Added "Source File" option to the dropdown values
         self.naming_combo = ttk.Combobox(rename_frame, textvariable=self.naming_style_var, 
                                         values=["Source File", "CamelCase", "snake_case", "lowercase", "UPPERCASE"], 
@@ -960,6 +960,9 @@ class SQLTableBuilder:
 
         if self.infer_types_var.get():
             self.set_inferred_types_async()
+
+        # Automatically apply the default column format
+        self.apply_column_naming_convention()
 
         # === SCRIPT GENERATOR SECTION ===
         script_frame = tk.LabelFrame(self.master, text="Script Generator", padx=10, pady=10)
@@ -1716,6 +1719,9 @@ class SQLTableBuilder:
         
         # NEW: Load auto preview data setting
         self.auto_preview_data = cfg.get("auto_preview_data", True)
+        
+        # NEW: Load default column format setting  
+        self.default_column_format = cfg.get("default_column_format", "Source File")
 
         # Update truncate color if the checkbox widget exists
         try:

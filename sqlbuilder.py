@@ -684,8 +684,8 @@ class SQLTableBuilder:
                                                         preview_controls_parent, 
                                                         text=indicator_text,
                                                         font=('Arial', 8), 
-                                                        bg='#F8D7DA',  # Light red background
-                                                        fg='#721C24',  # Dark red text
+                                                        bg='#D1ECF1',  # Light blue background
+                                                        fg='#0C5460',  # Dark blue text
                                                         relief='solid', 
                                                         bd=1, 
                                                         padx=6, 

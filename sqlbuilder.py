@@ -371,7 +371,7 @@ class ProgressWindow:
         y = (self.window.winfo_screenheight() // 2) - (150 // 2)
         self.window.geometry(f"400x150+{x}+{y}")
         
-        self.label = tk.Label(self.window, text="Initializing...")
+        self.label = tk.Label(self.window, text="Initializing...", justify='left')
         self.label.pack(pady=20)
         
         self.progress = ttk.Progressbar(self.window, mode='indeterminate')
@@ -412,7 +412,7 @@ class ProgressWindow:
         self.progress.config(mode='determinate', maximum=maximum, value=value)
         self.window.update()
         
-    def show_completion(self):
+    def show_completion(self, dual_scripts=False):
         """Show completion state - stop progress bar and change button to Close"""
         self.progress.stop()
         self.progress.pack_forget()  # Hide the progress bar
@@ -421,14 +421,15 @@ class ProgressWindow:
                                  command=self.close)
         self.window.title("Operation Complete")
         
-        # Increase window height to accommodate completion message
-        self.window.geometry("450x200")
+        # Increase window height based on content - smaller since we removed file paths
+        window_height = 180 if dual_scripts else 150
+        self.window.geometry(f"450x{window_height}")
         
         # Re-center the window with new size
         self.window.update_idletasks()
         x = (self.window.winfo_screenwidth() // 2) - (450 // 2)
-        y = (self.window.winfo_screenheight() // 2) - (200 // 2)
-        self.window.geometry(f"450x200+{x}+{y}")
+        y = (self.window.winfo_screenheight() // 2) - (window_height // 2)
+        self.window.geometry(f"450x{window_height}+{x}+{y}")
         
     def cancel(self):
         self.cancelled = True
@@ -1050,10 +1051,12 @@ class SQLTableBuilder:
                   command=self.safe_exit).pack(side="left", padx=10)
 
     def handle_generate_scripts(self):
+        create_file_path = None
+        
         if self.include_create_script.get():
-            self.generate_sql_file()
+            create_file_path = self.generate_sql_file()
         if self.include_insert_script.get():
-            self.generate_insert_statements_optimized()
+            self.generate_insert_statements_optimized(create_file_path)
 
     def add_pk_options_to_dropdown(self, index):
         """Add INT IDENTITY and UNIQUEIDENTIFIER to the top of a dropdown when PK is selected"""
@@ -1160,7 +1163,7 @@ class SQLTableBuilder:
         schema_name = self.schema_name.get().strip()
         full_table = f"[{schema_name}].[{table_name}]"
         if not table_name:
-            return
+            return None
 
         db_name = self.database_name.get().strip()
         create_lines = []
@@ -1198,8 +1201,10 @@ class SQLTableBuilder:
         if file_path:
             with open(file_path, 'w') as f:
                 f.write(script)
+            return file_path
+        return None
 
-    def generate_insert_statements_optimized(self):
+    def generate_insert_statements_optimized(self, create_file_path=None):
         """Optimized insert statement generation with chunked processing and progress tracking"""
         table_name = self.table_name.get().strip()
         schema_name = self.schema_name.get().strip()
@@ -1305,22 +1310,33 @@ class SQLTableBuilder:
                 file_size = os.path.getsize(file_path)
                 file_size_mb = file_size / (1024 * 1024)
                 
-                # Schedule UI update on main thread to show completion info on progress window
-                completion_msg = (f"✅ INSERT script successfully created!\n\n"
-                                f"📁 File: {os.path.basename(file_path)}\n"
-                                f"📊 Rows: {total_rows_processed:,}  💾 Size: {file_size_mb:.1f} MB\n\n"
-                                f"📍 {file_path}")
+                # Build completion message
+                completion_msg_parts = []
                 
+                # Include CREATE TABLE info if it was generated
+                if create_file_path:
+                    completion_msg_parts.append("✅ CREATE TABLE script successfully created!")
+                    completion_msg_parts.append(f"📁 File: {os.path.basename(create_file_path)}")
+                    completion_msg_parts.append("")  # Blank line
+                
+                # Add INSERT script info
+                completion_msg_parts.append("✅ INSERT script successfully created!")
+                completion_msg_parts.append(f"📁 File: {os.path.basename(file_path)}")
+                completion_msg_parts.append(f"📊 Rows: {total_rows_processed:,}  💾 Size: {file_size_mb:.1f} MB")
+                
+                completion_msg = "\n".join(completion_msg_parts)
+                
+                # Schedule UI update on main thread to show completion info on progress window
                 self.master.after(0, lambda: [
                     progress.update_text(completion_msg),
-                    progress.show_completion()
+                    progress.show_completion(dual_scripts=bool(create_file_path))
                 ])
                     
             except Exception as e:
                 error_msg = f"❌ Failed to generate INSERT statements:\n\n{str(e)}"
                 self.master.after(0, lambda: [
                     progress.update_text(error_msg),
-                    progress.show_completion()
+                    progress.show_completion(dual_scripts=False)
                 ])
 
         # Always run generation in background thread

@@ -378,12 +378,21 @@ class ProgressWindow:
         self.progress.pack(pady=10, padx=40, fill='x')
         self.progress.start()
         
-        # Create style for this button
+        # Create style for buttons
         style = ttk.Style()
         style.configure('ProgressCancel.TButton', 
                        background='#FFB6C1',  # Light pink
                        foreground='black',
                        padding=(5, 2),        # Smaller padding
+                       relief='flat',
+                       borderwidth=1,
+                       font=('Arial', 8))
+        
+        # Also configure the light blue style for completion
+        style.configure('LightBlue.TButton',
+                       background='#ADD8E6',  # Light blue
+                       foreground='black',
+                       padding=(5, 2),
                        relief='flat',
                        borderwidth=1,
                        font=('Arial', 8))
@@ -402,6 +411,24 @@ class ProgressWindow:
     def set_progress(self, value, maximum=100):
         self.progress.config(mode='determinate', maximum=maximum, value=value)
         self.window.update()
+        
+    def show_completion(self):
+        """Show completion state - stop progress bar and change button to Close"""
+        self.progress.stop()
+        self.progress.pack_forget()  # Hide the progress bar
+        self.cancel_button.config(text="Close", 
+                                 style='LightBlue.TButton',  # Change to normal button style
+                                 command=self.close)
+        self.window.title("Operation Complete")
+        
+        # Increase window height to accommodate completion message
+        self.window.geometry("450x200")
+        
+        # Re-center the window with new size
+        self.window.update_idletasks()
+        x = (self.window.winfo_screenwidth() // 2) - (450 // 2)
+        y = (self.window.winfo_screenheight() // 2) - (200 // 2)
+        self.window.geometry(f"450x200+{x}+{y}")
         
     def cancel(self):
         self.cancelled = True
@@ -1173,7 +1200,7 @@ class SQLTableBuilder:
                 f.write(script)
 
     def generate_insert_statements_optimized(self):
-        """Optimized insert statement generation with chunked processing"""
+        """Optimized insert statement generation with chunked processing and progress tracking"""
         table_name = self.table_name.get().strip()
         schema_name = self.schema_name.get().strip()
         full_table = f"[{schema_name}].[{table_name}]"
@@ -1195,13 +1222,13 @@ class SQLTableBuilder:
         if not file_path:
             return
 
-        # Show progress dialog for large files
-        progress = None
-        if self.data_cache.file_info['is_large_file']:
-            progress = ProgressWindow(self.master, "Generating INSERT Statements...")
-            
+        # Always show progress dialog for INSERT generation
+        progress = ProgressWindow(self.master, "Generating INSERT Statements...")
+        
         def generate_task():
             try:
+                progress.update_text("Initializing INSERT script generation...")
+                
                 script_lines = []
                 db_name = self.database_name.get().strip()
 
@@ -1217,20 +1244,19 @@ class SQLTableBuilder:
 
                 insert_header = f"INSERT INTO {full_table} ({', '.join(f'[{c}]' for c in col_names)})\nVALUES"
                 
-                if progress:
-                    progress.update_text("Processing data chunks...")
+                progress.update_text("Reading and processing data...")
                 
                 # Process data in chunks
                 all_values = []
                 chunk_count = 0
+                total_rows_processed = 0
                 
                 for chunk in self.data_cache.get_chunk_generator():
-                    if progress and progress.cancelled:
+                    if progress.cancelled:
                         return
                         
                     chunk_count += 1
-                    if progress:
-                        progress.update_text(f"Processing chunk {chunk_count}...")
+                    progress.update_text(f"Processing data chunk {chunk_count}...")
                     
                     for row in chunk:
                         # Pad row if necessary
@@ -1238,16 +1264,29 @@ class SQLTableBuilder:
                         if extra_count > 0:
                             row = [''] * extra_count + row
                         all_values.append(self.format_insert_values(row, column_types))
+                        total_rows_processed += 1
+                        
+                        # Update progress every 1000 rows for better user feedback
+                        if total_rows_processed % 1000 == 0:
+                            progress.update_text(f"Processed {total_rows_processed:,} rows...")
                 
-                if progress and progress.cancelled:
+                if progress.cancelled:
                     return
                     
                 # Generate final script
-                if progress:
-                    progress.update_text("Generating final script...")
+                progress.update_text(f"Generating SQL script for {total_rows_processed:,} rows...")
                 
                 if self.batch_insert_var.get():
+                    batch_count = 0
+                    total_batches = (len(all_values) + self.insert_batch_size - 1) // self.insert_batch_size
+                    
                     for i in range(0, len(all_values), self.insert_batch_size):
+                        if progress.cancelled:
+                            return
+                            
+                        batch_count += 1
+                        progress.update_text(f"Creating batch {batch_count} of {total_batches}...")
+                        
                         chunk = all_values[i:i + self.insert_batch_size]
                         script_lines.append(insert_header)
                         script_lines.append(",\n".join(chunk) + ";\nGO")
@@ -1257,30 +1296,35 @@ class SQLTableBuilder:
 
                 script = "\n".join(script_lines)
                 
-                if progress:
-                    progress.update_text("Saving file...")
+                progress.update_text("Saving file to disk...")
                 
                 with open(file_path, 'w') as f:
                     f.write(script)
                 
-                # Schedule UI update on main thread
-                if progress:
-                    self.master.after(0, lambda: [progress.close(), messagebox.showinfo("Success", f"INSERT statements saved to {file_path}")])
-                else:
-                    self.master.after(0, lambda: messagebox.showinfo("Success", f"INSERT statements saved to {file_path}"))
+                # Calculate file size for display
+                file_size = os.path.getsize(file_path)
+                file_size_mb = file_size / (1024 * 1024)
+                
+                # Schedule UI update on main thread to show completion info on progress window
+                completion_msg = (f"✅ INSERT script successfully created!\n\n"
+                                f"📁 File: {os.path.basename(file_path)}\n"
+                                f"📊 Rows: {total_rows_processed:,}  💾 Size: {file_size_mb:.1f} MB\n\n"
+                                f"📍 {file_path}")
+                
+                self.master.after(0, lambda: [
+                    progress.update_text(completion_msg),
+                    progress.show_completion()
+                ])
                     
             except Exception as e:
-                if progress:
-                    self.master.after(0, lambda: [progress.close(), messagebox.showerror("Error", f"Failed to generate INSERT statements: {e}")])
-                else:
-                    self.master.after(0, lambda: messagebox.showerror("Error", f"Failed to generate INSERT statements: {e}"))
+                error_msg = f"❌ Failed to generate INSERT statements:\n\n{str(e)}"
+                self.master.after(0, lambda: [
+                    progress.update_text(error_msg),
+                    progress.show_completion()
+                ])
 
-        if progress:
-            # Run generation in background thread for large files
-            self.executor.submit(generate_task)
-        else:
-            # Run directly for small files
-            generate_task()
+        # Always run generation in background thread
+        self.executor.submit(generate_task)
 
     def reset_data_types_immediately(self):
         """Reset data types immediately without progress window"""

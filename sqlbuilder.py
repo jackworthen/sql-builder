@@ -446,6 +446,7 @@ class SQLTableBuilder:
         self.table_name = tk.StringVar()
         self.schema_name = tk.StringVar(value="dbo")
         self.headers = []
+        self.original_headers = []  # Store original headers for "Source File" reset
         self.column_entries = []
         self.type_entries = []
         self.pk_vars = []
@@ -808,6 +809,8 @@ class SQLTableBuilder:
                     return
                     
                 self.headers = self.data_cache.headers
+                # Store original headers for "Source File" reset functionality
+                self.original_headers = self.headers.copy()
                 
                 progress.update_text("Processing complete!")
                 time.sleep(0.5)  # Brief pause to show completion
@@ -853,8 +856,11 @@ class SQLTableBuilder:
         rename_frame = tk.Frame(settings_frame)
         rename_frame.pack(fill="x", pady=3)
         tk.Label(rename_frame, text="Column Format:").pack(side="left", padx=(5, 2))
-        self.naming_style_var = tk.StringVar(value="")
-        self.naming_combo = ttk.Combobox(rename_frame, textvariable=self.naming_style_var, values=["CamelCase", "snake_case", "lowercase", "UPPERCASE"], width=15, state="readonly")
+        self.naming_style_var = tk.StringVar(value="Source File")
+        # Added "Source File" option to the dropdown values
+        self.naming_combo = ttk.Combobox(rename_frame, textvariable=self.naming_style_var, 
+                                        values=["Source File", "CamelCase", "snake_case", "lowercase", "UPPERCASE"], 
+                                        width=15, state="readonly")
         self.naming_combo.pack(side="left", padx=2)
         ttk.Button(rename_frame, text="Set", 
                   style='Small.TButton',
@@ -1385,11 +1391,25 @@ class SQLTableBuilder:
 
     def apply_column_naming_convention(self):
         style = self.naming_style_var.get()
-        for entry in self.column_entries:
-            old_name = entry.get()
-            new_name = self.format_column_name(old_name, style)
-            entry.delete(0, "end")
-            entry.insert(0, new_name)
+        
+        if style == "Source File":
+            # Reset column names back to original source file names
+            # Only reset original columns, not manually added ones
+            original_column_count = len(self.original_headers)
+            for i, entry in enumerate(self.column_entries):
+                if i < original_column_count:
+                    # This is an original column, reset to source name
+                    entry.delete(0, "end")
+                    entry.insert(0, self.original_headers[i])
+                # Leave manually added columns unchanged
+        else:
+            # Apply formatting to all columns
+            for entry in self.column_entries:
+                old_name = entry.get()
+                new_name = self.format_column_name(old_name, style)
+                entry.delete(0, "end")
+                entry.insert(0, new_name)
+        
         self.master.focus()
 
     def get_delimiter_display_name(self, delimiter):
@@ -1683,7 +1703,7 @@ class SQLTableBuilder:
         self.sample_percentage = cfg.get("sample_percentage", 15)
 
         self.insert_batch_size = int(cfg.get("insert_batch_size") or 500)
-        # Only initialize truncate_before_insert if it doesn't exist, then apply config setting
+         # Only initialize truncate_before_insert if it doesn't exist, then apply config setting
         if not hasattr(self, 'truncate_before_insert'):
             self.truncate_before_insert = tk.BooleanVar()
         self.truncate_before_insert.set(cfg.get("default_truncate", False))

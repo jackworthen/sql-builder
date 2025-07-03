@@ -91,7 +91,7 @@ class ConfigManager:
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
         window.title("Settings")
-        window.geometry("350x570")  # Increased height to accommodate new setting
+        window.geometry("350x515")  # Increased height to accommodate new setting
         window.resizable(False, False)
         
         # Center the window

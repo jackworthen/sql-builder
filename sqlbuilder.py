@@ -966,22 +966,6 @@ class SQLTableBuilder:
         tk.Label(table_frame, text="Table:", width=12, anchor="w").pack(side="left")
         tk.Entry(table_frame, width=40, textvariable=self.table_name).pack(side="left")
 
-        # Row for renaming dropdown
-        rename_frame = tk.Frame(settings_frame)
-        rename_frame.pack(fill="x", pady=3)
-        tk.Label(rename_frame, text="Column Format:").pack(side="left", padx=(5, 2))
-        self.naming_style_var = tk.StringVar(value=self.config_mgr.config.get("default_column_format", "Source File"))
-        # Added "Source File" option to the dropdown values
-        self.naming_combo = ttk.Combobox(rename_frame, textvariable=self.naming_style_var, 
-                                        values=["Source File", "CamelCase", "snake_case", "lowercase", "UPPERCASE"], 
-                                        width=15, state="readonly")
-        self.naming_combo.pack(side="left", padx=2)
-        
-        # Bind the dropdown selection to automatically apply the formatting
-        self.naming_combo.bind("<<ComboboxSelected>>", lambda e: self.apply_column_naming_convention())
-        
-    
-
         # === COLUMN DEFINITION SECTION ===
         column_frame = tk.LabelFrame(self.master, text="Define Table Columns", padx=10, pady=10)
         column_frame.pack(fill="both", expand=True, padx=10, pady=5)
@@ -989,6 +973,17 @@ class SQLTableBuilder:
         # Add Column and Remove Column buttons at the top of the frame
         column_buttons_frame = tk.Frame(column_frame)
         column_buttons_frame.pack(fill="x", pady=(0, 10))
+        
+        # Column Format dropdown - moved to the left of Add Column button
+        tk.Label(column_buttons_frame, text="Column Format:").pack(side="left", padx=(0, 5))
+        self.naming_style_var = tk.StringVar(value=self.config_mgr.config.get("default_column_format", "Source File"))
+        self.naming_combo = ttk.Combobox(column_buttons_frame, textvariable=self.naming_style_var, 
+                                        values=["Source File", "CamelCase", "snake_case", "lowercase", "UPPERCASE"], 
+                                        width=12, state="readonly")
+        self.naming_combo.pack(side="left", padx=(2, 15))
+        
+        # Bind the dropdown selection to automatically apply the formatting
+        self.naming_combo.bind("<<ComboboxSelected>>", lambda e: self.apply_column_naming_convention())
         
         self.add_column_button = ttk.Button(column_buttons_frame, text="Add Column", 
                                            style='Small.TButton',

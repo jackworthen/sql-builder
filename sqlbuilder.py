@@ -1541,21 +1541,16 @@ class SQLTableBuilder:
                 file_size = os.path.getsize(file_path)
                 file_size_mb = file_size / (1024 * 1024)
                 
-                # Build completion message
-                completion_msg_parts = []
-                
-                # Include CREATE TABLE info if it was generated
-                if create_file_path:
-                    completion_msg_parts.append("✅ CREATE TABLE script successfully created!")
-                    completion_msg_parts.append(f"📁 File: {os.path.basename(create_file_path)}")
-                    completion_msg_parts.append("")  # Blank line
-                
-                # Add INSERT script info
-                completion_msg_parts.append("✅ INSERT script successfully created!")
-                completion_msg_parts.append(f"📁 File: {os.path.basename(file_path)}")
-                completion_msg_parts.append(f"📊 Rows: {total_rows_processed:,}  💾 Size: {file_size_mb:.1f} MB")
-                
-                completion_msg = "\n".join(completion_msg_parts)
+                # Build completion message - simplified since details are in log
+                if create_file_path and log_data and log_data.get('insert_script_generated'):
+                    # Both CREATE and INSERT generated
+                    completion_msg = "✅ Operation completed successfully!\n\nCREATE TABLE and INSERT scripts have been generated."
+                elif create_file_path:
+                    # Only CREATE generated (shouldn't happen in this function, but safety check)
+                    completion_msg = "✅ Operation completed successfully!\n\nCREATE TABLE script has been generated."
+                else:
+                    # Only INSERT generated
+                    completion_msg = "✅ Operation completed successfully!\n\nINSERT script has been generated."
                 
                 # Schedule UI update and log callback on main thread
                 def complete_operation():
@@ -1570,7 +1565,7 @@ class SQLTableBuilder:
                 return file_path
                     
             except Exception as e:
-                error_msg = f"❌ Failed to generate INSERT statements:\n\n{str(e)}"
+                error_msg = "❌ Operation failed!\n\nThere was an error generating the INSERT script."
                 
                 # Update log data with error info
                 if log_data is not None:

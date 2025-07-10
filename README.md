@@ -50,6 +50,15 @@ SQL Table Builder Pro is a powerful, user-friendly desktop application that tran
 - **Configurable Preview**: Adjustable preview percentages for data inspection with auto-preview option
 - **Memory Efficient**: Optimized for minimal memory footprint with chunked processing
 
+### 📊 **Comprehensive Logging & Audit Trail**
+- **Detailed Operation Logs**: Complete audit trail of all script generation operations
+- **Data Validation**: Automatic row count validation between source and processed data
+- **File Information**: Source file details, sizes, and processing statistics
+- **Script Documentation**: Generated script locations, sizes, and row counts
+- **Performance Tracking**: Processing times and operation success/failure status
+- **Flexible Log Storage**: Custom log directories or automatic placement with SQL scripts
+- **Enable/Disable Logging**: Full control over logging functionality
+
 ---
 
 ## 🚀 Quick Start
@@ -98,6 +107,7 @@ tkinter (usually comes with Python)
    - CREATE TABLE statements with proper constraints
    - INSERT INTO statements with optional batching and TRUNCATE
    - Save scripts and use in your favorite SQL environment!
+   - **📋 Automatic logging** creates detailed operation records for validation and audit purposes
 
 ---
 
@@ -117,6 +127,8 @@ tkinter (usually comes with Python)
 | **Auto-Preview Data** | Configurable automatic data preview on file selection |
 | **Table Naming** | Use filename or custom table names |
 | **Platform Config** | Cross-platform settings storage in appropriate system directories |
+| **Comprehensive Logging** | Detailed operation logs with data validation and audit trail |
+| **Custom Log Directory** | Flexible log file placement with automatic fallback |
 
 ### 🎨 Column Management
 
@@ -150,6 +162,69 @@ When you select a column as a primary key (🔑), these options automatically ap
 - **Progress Tracking**: Real-time feedback for file operations
 - **Memory Optimization**: Efficient handling of large datasets
 - **Generator-based Processing**: Stream processing for extremely large files
+
+### 📊 Logging & Audit Features
+
+#### What Gets Logged
+Every script generation operation creates a comprehensive log containing:
+
+- **📅 Operation Timestamp**: Exact date and time of script generation
+- **📁 Source File Details**: File path, name, type, size, and total row count
+- **🗂️ Table Configuration**: Database, schema, table name, and column details
+- **🔧 Processing Settings**: Type inference, column format, batch settings
+- **📄 Generated Scripts**: File names, paths, sizes, and row counts
+- **✅ Data Validation**: Source vs processed row count verification
+- **⏱️ Performance Metrics**: Total processing time
+- **🚨 Error Tracking**: Any issues or warnings during processing
+
+#### Log Configuration
+- **Enable/Disable**: Full control over logging functionality
+- **Custom Directory**: Specify where log files should be saved
+- **Automatic Placement**: Logs saved alongside SQL scripts if no custom directory specified
+- **Timestamped Files**: Each operation gets a unique log file with timestamp
+
+#### Sample Log Output
+```
+================================================================================
+SQL TABLE BUILDER PRO - OPERATION LOG
+================================================================================
+
+Operation Date/Time: 2024-01-15 14:30:45
+Log File: SQLTableBuilder_employees_20240115_143045.log
+
+SOURCE FILE INFORMATION:
+----------------------------------------
+File Path: C:\Data\employees.csv
+File Name: employees.csv
+File Type: CSV
+File Size: 2.5 MB
+Total Rows in Source: 10,000
+Delimiter: comma ( , )
+
+SCRIPTS GENERATED:
+----------------------------------------
+✓ CREATE TABLE script generated
+  File: create_table_employees.sql
+  Path: C:\Scripts\create_table_employees.sql
+  Size: 1.2 KB
+✓ INSERT statements generated
+  File: insert_into_employees.sql
+  Path: C:\Scripts\insert_into_employees.sql
+  Size: 1.8 MB
+  Rows Processed: 10,000
+
+DATA VALIDATION:
+----------------------------------------
+✓ Row count validation PASSED
+  Source rows: 10,000
+  Processed rows: 10,000
+
+OPERATION SUMMARY:
+----------------------------------------
+Scripts Generated: CREATE TABLE, INSERT
+Total Processing Time: 2.3 seconds
+Operation Status: SUCCESS
+```
 
 ### 🎹 Keyboard Shortcuts
 
@@ -239,6 +314,7 @@ sql-builder/
 3. **Type Inference**: Statistical analysis of data patterns with regex optimization
 4. **UI Generation**: Dynamic interface based on data structure
 5. **Script Generation**: Optimized SQL output with chunked processing
+6. **Logging & Validation**: Comprehensive audit trail with data validation
 
 ### Performance Optimizations
 - **Large File Handling**: Configurable MB-based thresholds with automatic chunked processing
@@ -248,10 +324,17 @@ sql-builder/
 - **JSON Processing**: Intelligent nested object flattening and array handling
 
 ### Settings Management
-- **Tabbed Interface**: Configuration, Data Processing, and SQL Generation tabs
+- **Tabbed Interface**: Configuration, Data Processing, SQL Generation, and Logging tabs
 - **Persistent Storage**: JSON-based configuration with platform-specific directories
 - **Validation**: Input validation for all numeric settings
 - **Real-time Updates**: Immediate application of setting changes
+
+### Logging System
+- **Thread-Safe**: Handles background script generation with proper synchronization
+- **Flexible Storage**: Custom directories or automatic placement with SQL scripts
+- **Comprehensive Coverage**: Every operation detail captured for audit purposes
+- **Data Validation**: Automatic verification of row counts between source and processed data
+- **Error Handling**: Proper logging of both successful and failed operations
 
 ---
 

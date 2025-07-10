@@ -12,6 +12,7 @@ from tkinter import filedialog, messagebox
 import csv
 import sys
 import os
+import logging
 
 def resource_path(filename):
     """ Get absolute path to resource, works for dev and for PyInstaller bundle """
@@ -1139,12 +1140,119 @@ class SQLTableBuilder:
                                "The table name is required to generate valid SQL scripts.")
             return
         
+        # Start timing for logging
+        start_time = time.time()
+        
+        # Initialize log data
+        log_data = {
+            'operation_successful': True,
+            'source_file_path': self.file_path.get(),
+            'source_file_name': os.path.basename(self.file_path.get()) if self.file_path.get() else 'N/A',
+            'source_file_type': self.data_cache.file_type.upper() if self.data_cache.file_type else 'N/A',
+            'source_total_rows': self.data_cache.file_info.get('total_rows', 0) if self.data_cache.file_info else 0,
+            'source_delimiter': self.delimiter.get() if self.delimiter.get() != "N/A (JSON)" else None,
+            'database_name': self.database_name.get().strip() or 'N/A',
+            'schema_name': self.schema_name.get().strip() or 'dbo',
+            'table_name': table_name,
+            'full_table_name': f"[{self.schema_name.get().strip() or 'dbo'}].[{table_name}]",
+            'column_count': len(self.column_entries),
+            'type_inference_enabled': self.infer_types_var.get(),
+            'column_format': self.naming_style_var.get() if hasattr(self, 'naming_style_var') else 'Source File',
+            'batch_insert_enabled': self.batch_insert_var.get(),
+            'batch_size': self.insert_batch_size,
+            'truncate_enabled': self.truncate_before_insert.get(),
+            'create_script_generated': False,
+            'insert_script_generated': False,
+            'insert_rows_processed': 0,
+            'start_time': start_time
+        }
+        
+        # Add source file size
+        if self.file_path.get():
+            try:
+                file_size = os.path.getsize(self.file_path.get())
+                if file_size < 1024:
+                    log_data['source_file_size'] = f"{file_size} bytes"
+                elif file_size < 1024 * 1024:
+                    log_data['source_file_size'] = f"{file_size / 1024:.1f} KB"
+                else:
+                    log_data['source_file_size'] = f"{file_size / (1024 * 1024):.1f} MB"
+            except Exception:
+                log_data['source_file_size'] = 'Unknown'
+        
+        # Collect column details
+        column_details = []
+        primary_key_columns = []
+        
+        for i, (col_entry, type_entry, pk_var, null_var) in enumerate(zip(
+            self.column_entries, self.type_entries, self.pk_vars, self.null_vars)):
+            col_name = col_entry.get()
+            col_type = type_entry.get()
+            is_pk = pk_var.get()
+            allows_null = null_var.get()
+            
+            if is_pk:
+                primary_key_columns.append(col_name)
+            
+            column_details.append({
+                'name': col_name,
+                'type': col_type,
+                'is_primary_key': is_pk,
+                'allows_null': allows_null
+            })
+        
+        log_data['column_details'] = column_details
+        log_data['primary_key_columns'] = primary_key_columns
+        
         create_file_path = None
         
-        if self.include_create_script.get():
-            create_file_path = self.generate_sql_file()
-        if self.include_insert_script.get():
-            self.generate_insert_statements_optimized(create_file_path)
+        try:
+            # Generate CREATE script
+            if self.include_create_script.get():
+                create_file_path = self.generate_sql_file()
+                if create_file_path:
+                    log_data['create_script_generated'] = True
+                    log_data['create_script_name'] = os.path.basename(create_file_path)
+                    log_data['create_script_path'] = create_file_path
+                    try:
+                        script_size = os.path.getsize(create_file_path)
+                        if script_size < 1024:
+                            log_data['create_script_size'] = f"{script_size} bytes"
+                        else:
+                            log_data['create_script_size'] = f"{script_size / 1024:.1f} KB"
+                    except Exception:
+                        log_data['create_script_size'] = 'Unknown'
+            
+            # Generate INSERT script
+            if self.include_insert_script.get():
+                # Pass a callback to write the log after INSERT completion
+                self.generate_insert_statements_optimized(create_file_path, log_data, self.finalize_operation_log)
+            else:
+                # Write log immediately if no INSERT script
+                self.finalize_operation_log(log_data)
+                
+        except Exception as e:
+            log_data['operation_successful'] = False
+            log_data['notes'] = f"Error during script generation: {str(e)}"
+            self.finalize_operation_log(log_data)
+    
+    def finalize_operation_log(self, log_data):
+        """Finalize and write the operation log"""
+        # Calculate total processing time
+        end_time = time.time()
+        processing_time = end_time - log_data['start_time']
+        if processing_time < 60:
+            log_data['total_processing_time'] = f"{processing_time:.1f} seconds"
+        else:
+            minutes = int(processing_time // 60)
+            seconds = processing_time % 60
+            log_data['total_processing_time'] = f"{minutes}m {seconds:.1f}s"
+        
+        # Remove start_time from log_data as it's no longer needed
+        log_data.pop('start_time', None)
+        
+        # Write operation log
+        self.write_operation_log(log_data)
 
     def add_pk_options_to_dropdown(self, index):
         """Add INT IDENTITY and UNIQUEIDENTIFIER to the top of a dropdown when PK is selected"""
@@ -1292,13 +1400,13 @@ class SQLTableBuilder:
             return file_path
         return None
 
-    def generate_insert_statements_optimized(self, create_file_path=None):
+    def generate_insert_statements_optimized(self, create_file_path=None, log_data=None, log_callback=None):
         """Optimized insert statement generation with chunked processing and progress tracking"""
         table_name = self.table_name.get().strip()
         schema_name = self.schema_name.get().strip()
         full_table = f"[{schema_name}].[{table_name}]"
         if not table_name:
-            return
+            return None
         
         col_names = []
         column_types = []
@@ -1313,7 +1421,10 @@ class SQLTableBuilder:
         default_filename = f"insert_into_{table_name}.sql"
         file_path = filedialog.asksaveasfilename(defaultextension=".sql", initialfile=default_filename, filetypes=[("SQL Files", "*.sql")])
         if not file_path:
-            return
+            # Call log callback even if user cancels
+            if log_callback and log_data:
+                log_callback(log_data)
+            return None
 
         # Always show progress dialog for INSERT generation
         progress = ProgressWindow(self.master, "Generating INSERT Statements...")
@@ -1346,6 +1457,11 @@ class SQLTableBuilder:
                 
                 for chunk in self.data_cache.get_chunk_generator():
                     if progress.cancelled:
+                        # Call log callback even if cancelled
+                        if log_callback and log_data:
+                            log_data['operation_successful'] = False
+                            log_data['notes'] = "Operation cancelled by user"
+                            self.master.after(0, lambda: log_callback(log_data))
                         return
                         
                     chunk_count += 1
@@ -1364,6 +1480,11 @@ class SQLTableBuilder:
                             progress.update_text(f"Processed {total_rows_processed:,} rows...")
                 
                 if progress.cancelled:
+                    # Call log callback even if cancelled
+                    if log_callback and log_data:
+                        log_data['operation_successful'] = False
+                        log_data['notes'] = "Operation cancelled by user"
+                        self.master.after(0, lambda: log_callback(log_data))
                     return
                     
                 # Generate final script
@@ -1375,6 +1496,11 @@ class SQLTableBuilder:
                     
                     for i in range(0, len(all_values), self.insert_batch_size):
                         if progress.cancelled:
+                            # Call log callback even if cancelled
+                            if log_callback and log_data:
+                                log_data['operation_successful'] = False
+                                log_data['notes'] = "Operation cancelled by user"
+                                self.master.after(0, lambda: log_callback(log_data))
                             return
                             
                         batch_count += 1
@@ -1393,6 +1519,23 @@ class SQLTableBuilder:
                 
                 with open(file_path, 'w') as f:
                     f.write(script)
+                
+                # Update log data if provided
+                if log_data is not None:
+                    log_data['insert_script_generated'] = True
+                    log_data['insert_script_name'] = os.path.basename(file_path)
+                    log_data['insert_script_path'] = file_path
+                    log_data['insert_rows_processed'] = total_rows_processed
+                    
+                    # Calculate file size
+                    try:
+                        script_size = os.path.getsize(file_path)
+                        if script_size < 1024 * 1024:
+                            log_data['insert_script_size'] = f"{script_size / 1024:.1f} KB"
+                        else:
+                            log_data['insert_script_size'] = f"{script_size / (1024 * 1024):.1f} MB"
+                    except Exception:
+                        log_data['insert_script_size'] = 'Unknown'
                 
                 # Calculate file size for display
                 file_size = os.path.getsize(file_path)
@@ -1414,21 +1557,38 @@ class SQLTableBuilder:
                 
                 completion_msg = "\n".join(completion_msg_parts)
                 
-                # Schedule UI update on main thread to show completion info on progress window
-                self.master.after(0, lambda: [
-                    progress.update_text(completion_msg),
+                # Schedule UI update and log callback on main thread
+                def complete_operation():
+                    progress.update_text(completion_msg)
                     progress.show_completion(dual_scripts=bool(create_file_path))
-                ])
+                    # Call log callback after INSERT is complete
+                    if log_callback and log_data:
+                        log_callback(log_data)
+                
+                self.master.after(0, complete_operation)
+                
+                return file_path
                     
             except Exception as e:
                 error_msg = f"❌ Failed to generate INSERT statements:\n\n{str(e)}"
-                self.master.after(0, lambda: [
-                    progress.update_text(error_msg),
+                
+                # Update log data with error info
+                if log_data is not None:
+                    log_data['operation_successful'] = False
+                    log_data['notes'] = f"Error during INSERT generation: {str(e)}"
+                
+                def handle_error():
+                    progress.update_text(error_msg)
                     progress.show_completion(dual_scripts=False)
-                ])
+                    # Call log callback even on error
+                    if log_callback and log_data:
+                        log_callback(log_data)
+                
+                self.master.after(0, handle_error)
+                return None
 
         # Always run generation in background thread
-        self.executor.submit(generate_task)
+        return self.executor.submit(generate_task)
 
     def reset_data_types_immediately(self):
         """Reset data types immediately without progress window"""
@@ -1874,7 +2034,14 @@ class SQLTableBuilder:
         # NEW: Load large file threshold setting
         self.large_file_threshold_mb = cfg.get("large_file_threshold_mb", 1000)
         
+        # NEW: Load logging settings
+        self.enable_logging = cfg.get("enable_logging", True)
+        self.log_directory = cfg.get("log_directory", "")
+        
         # Update large file indicator if a file is currently selected
+        current_file = self.file_path.get()
+        if current_file:
+            self.update_large_file_indicator(current_file)
         current_file = self.file_path.get()
         if current_file:
             self.update_large_file_indicator(current_file)
@@ -1896,6 +2063,158 @@ class SQLTableBuilder:
                                 child.config(text=f"Batch ({self.insert_batch_size})")
         except Exception:
             pass
+
+    def write_operation_log(self, log_data):
+        """Write comprehensive operation log"""
+        if not self.enable_logging:
+            return
+            
+        try:
+            # Determine log directory
+            log_dir = self.log_directory.strip()
+            if not log_dir:
+                # Use same directory as the first script file
+                if log_data.get('create_script_path'):
+                    log_dir = os.path.dirname(log_data['create_script_path'])
+                elif log_data.get('insert_script_path'):
+                    log_dir = os.path.dirname(log_data['insert_script_path'])
+                else:
+                    log_dir = os.getcwd()  # Fallback to current directory
+            
+            # Create log directory if it doesn't exist
+            os.makedirs(log_dir, exist_ok=True)
+            
+            # Generate log filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            table_name = log_data.get('table_name', 'unknown')
+            log_filename = f"SQLTableBuilder_{table_name}_{timestamp}.log"
+            log_path = os.path.join(log_dir, log_filename)
+            
+            # Write comprehensive log
+            with open(log_path, 'w', encoding='utf-8') as log_file:
+                log_file.write("="*80 + "\n")
+                log_file.write("SQL TABLE BUILDER PRO - OPERATION LOG\n")
+                log_file.write("="*80 + "\n\n")
+                
+                # Timestamp
+                log_file.write(f"Operation Date/Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                log_file.write(f"Log File: {log_filename}\n\n")
+                
+                # Source File Information
+                log_file.write("SOURCE FILE INFORMATION:\n")
+                log_file.write("-" * 40 + "\n")
+                log_file.write(f"File Path: {log_data.get('source_file_path', 'N/A')}\n")
+                log_file.write(f"File Name: {log_data.get('source_file_name', 'N/A')}\n")
+                log_file.write(f"File Type: {log_data.get('source_file_type', 'N/A')}\n")
+                log_file.write(f"File Size: {log_data.get('source_file_size', 'N/A')}\n")
+                log_file.write(f"Total Rows in Source: {log_data.get('source_total_rows', 'N/A'):,}\n")
+                if log_data.get('source_delimiter'):
+                    log_file.write(f"Delimiter: {log_data.get('source_delimiter', 'N/A')}\n")
+                log_file.write("\n")
+                
+                # Table Configuration
+                log_file.write("TABLE CONFIGURATION:\n")
+                log_file.write("-" * 40 + "\n")
+                log_file.write(f"Database: {log_data.get('database_name', 'N/A')}\n")
+                log_file.write(f"Schema: {log_data.get('schema_name', 'N/A')}\n")
+                log_file.write(f"Table: {log_data.get('table_name', 'N/A')}\n")
+                log_file.write(f"Full Table Name: {log_data.get('full_table_name', 'N/A')}\n")
+                log_file.write(f"Column Count: {log_data.get('column_count', 'N/A')}\n")
+                if log_data.get('primary_key_columns'):
+                    log_file.write(f"Primary Key Columns: {', '.join(log_data['primary_key_columns'])}\n")
+                log_file.write("\n")
+                
+                # Column Details
+                if log_data.get('column_details'):
+                    log_file.write("COLUMN DETAILS:\n")
+                    log_file.write("-" * 40 + "\n")
+                    for i, col in enumerate(log_data['column_details'], 1):
+                        pk_indicator = " (PK)" if col.get('is_primary_key') else ""
+                        null_indicator = " NULL" if col.get('allows_null') else " NOT NULL"
+                        log_file.write(f"{i:2d}. {col['name']:<25} {col['type']:<20} {null_indicator}{pk_indicator}\n")
+                    log_file.write("\n")
+                
+                # Scripts Generated
+                log_file.write("SCRIPTS GENERATED:\n")
+                log_file.write("-" * 40 + "\n")
+                
+                if log_data.get('create_script_generated'):
+                    log_file.write("✓ CREATE TABLE script generated\n")
+                    log_file.write(f"  File: {log_data.get('create_script_name', 'N/A')}\n")
+                    log_file.write(f"  Path: {log_data.get('create_script_path', 'N/A')}\n")
+                    log_file.write(f"  Size: {log_data.get('create_script_size', 'N/A')}\n")
+                else:
+                    log_file.write("✗ CREATE TABLE script not generated\n")
+                
+                if log_data.get('insert_script_generated'):
+                    log_file.write("✓ INSERT statements generated\n")
+                    log_file.write(f"  File: {log_data.get('insert_script_name', 'N/A')}\n")
+                    log_file.write(f"  Path: {log_data.get('insert_script_path', 'N/A')}\n")
+                    log_file.write(f"  Size: {log_data.get('insert_script_size', 'N/A')}\n")
+                    log_file.write(f"  Rows Processed: {log_data.get('insert_rows_processed', 'N/A'):,}\n")
+                else:
+                    log_file.write("✗ INSERT statements not generated\n")
+                
+                log_file.write("\n")
+                
+                # Processing Settings
+                log_file.write("PROCESSING SETTINGS:\n")
+                log_file.write("-" * 40 + "\n")
+                log_file.write(f"Data Type Inference: {'Enabled' if log_data.get('type_inference_enabled') else 'Disabled'}\n")
+                log_file.write(f"Column Format: {log_data.get('column_format', 'N/A')}\n")
+                if log_data.get('insert_script_generated'):
+                    log_file.write(f"Batch Insert: {'Enabled' if log_data.get('batch_insert_enabled') else 'Disabled'}\n")
+                    if log_data.get('batch_insert_enabled'):
+                        log_file.write(f"Batch Size: {log_data.get('batch_size', 'N/A'):,}\n")
+                    log_file.write(f"Truncate Before Insert: {'Enabled' if log_data.get('truncate_enabled') else 'Disabled'}\n")
+                log_file.write("\n")
+                
+                # Data Validation
+                log_file.write("DATA VALIDATION:\n")
+                log_file.write("-" * 40 + "\n")
+                source_rows = log_data.get('source_total_rows', 0)
+                processed_rows = log_data.get('insert_rows_processed', 0)
+                
+                if log_data.get('insert_script_generated'):
+                    if source_rows == processed_rows:
+                        log_file.write("✓ Row count validation PASSED\n")
+                        log_file.write(f"  Source rows: {source_rows:,}\n")
+                        log_file.write(f"  Processed rows: {processed_rows:,}\n")
+                    else:
+                        log_file.write("⚠ Row count validation FAILED\n")
+                        log_file.write(f"  Source rows: {source_rows:,}\n")
+                        log_file.write(f"  Processed rows: {processed_rows:,}\n")
+                        log_file.write(f"  Difference: {abs(source_rows - processed_rows):,}\n")
+                else:
+                    log_file.write("- Row count validation not applicable (INSERT script not generated)\n")
+                
+                log_file.write("\n")
+                
+                # Summary
+                log_file.write("OPERATION SUMMARY:\n")
+                log_file.write("-" * 40 + "\n")
+                scripts_generated = []
+                if log_data.get('create_script_generated'):
+                    scripts_generated.append("CREATE TABLE")
+                if log_data.get('insert_script_generated'):
+                    scripts_generated.append("INSERT")
+                
+                log_file.write(f"Scripts Generated: {', '.join(scripts_generated) if scripts_generated else 'None'}\n")
+                log_file.write(f"Total Processing Time: {log_data.get('total_processing_time', 'N/A')}\n")
+                log_file.write(f"Operation Status: {'SUCCESS' if log_data.get('operation_successful', True) else 'FAILED'}\n")
+                
+                if log_data.get('notes'):
+                    log_file.write(f"Notes: {log_data['notes']}\n")
+                
+                log_file.write("\n")
+                log_file.write("="*80 + "\n")
+                log_file.write("END OF LOG\n")
+                log_file.write("="*80 + "\n")
+                
+            print(f"Operation log written to: {log_path}")
+            
+        except Exception as e:
+            print(f"Error writing operation log: {e}")
 
     def open_github_repository(self):
         """Open the GitHub repository in the default web browser"""

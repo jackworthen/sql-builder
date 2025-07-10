@@ -3,7 +3,7 @@ import json
 import sys
 import os
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, ttk, filedialog
 
 def resource_path(filename):
     """ Get absolute path to resource, works for dev and for PyInstaller bundle """
@@ -47,7 +47,9 @@ class ConfigManager:
             "custom_table_name": "",
             "auto_preview_data": True,
             "default_column_format": "Source File",
-            "large_file_threshold_mb": 1000
+            "large_file_threshold_mb": 1000,
+            "enable_logging": True,
+            "log_directory": ""
         }
         self.load()
 
@@ -91,7 +93,7 @@ class ConfigManager:
         window = tk.Toplevel(master)
         window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
         window.title("Settings")
-        window.geometry("350x515")  # Increased height to accommodate new setting
+        window.geometry("420x525")  # Increased width to show Browse button, reduced height after removing Log Content
         window.resizable(False, False)
         
         # Center the window
@@ -132,6 +134,12 @@ class ConfigManager:
         notebook.add(sql_frame, text="SQL Generation")
         
         self._create_sql_tab(sql_frame, entries)
+        
+        # Logging Tab - NEW
+        logging_frame = ttk.Frame(notebook, padding="20")
+        notebook.add(logging_frame, text="Logging")
+        
+        self._create_logging_tab(logging_frame, entries)
         
         # Button frame - inside main frame for guaranteed visibility
         button_frame = ttk.Frame(main_frame)
@@ -368,6 +376,80 @@ class ConfigManager:
         # Monitor changes to batch_var and call toggle_batch_size when it changes
         batch_var.trace('w', toggle_batch_size)
 
+    def _create_logging_tab(self, parent, entries):
+        """Create logging configuration section"""
+        # Title
+        title_label = ttk.Label(parent, text="Logging Configuration", 
+                               font=('TkDefaultFont', 10, 'bold'))
+        title_label.pack(anchor=tk.W, pady=(0, 15))
+        
+        # Logging Settings
+        logging_frame = ttk.LabelFrame(parent, text="Logging Options", padding="15")
+        logging_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Enable Logging checkbox - at the top
+        enable_logging_var = tk.BooleanVar(value=self.config.get("enable_logging", True))
+        enable_logging_cb = ttk.Checkbutton(logging_frame, text="Enable Logging", 
+                                           variable=enable_logging_var)
+        enable_logging_cb.pack(anchor=tk.W, pady=(0, 15))
+        entries["enable_logging"] = enable_logging_var
+        
+        # Log Directory Settings
+        log_dir_frame = ttk.LabelFrame(logging_frame, text="Log Directory", padding="10")
+        log_dir_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Custom log directory input
+        log_dir_input_frame = ttk.Frame(log_dir_frame)
+        log_dir_input_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        log_dir_label = ttk.Label(log_dir_input_frame, text="Custom Log Directory:")
+        log_dir_label.pack(anchor=tk.W, pady=(0, 5))
+        
+        # Directory path entry and browse button
+        dir_entry_frame = ttk.Frame(log_dir_input_frame)
+        dir_entry_frame.pack(fill=tk.X)
+        
+        log_dir_entry = ttk.Entry(dir_entry_frame, width=55)  # Increased width since Browse button is now below
+        log_dir_entry.insert(0, str(self.config.get("log_directory", "")))
+        log_dir_entry.pack(fill=tk.X, pady=(0, 5))  # Fill width and add bottom padding
+        entries["log_directory"] = log_dir_entry
+        
+        # Browse button below the entry field
+        def browse_log_directory():
+            directory = filedialog.askdirectory(title="Select Log Directory")
+            if directory:
+                log_dir_entry.delete(0, tk.END)
+                log_dir_entry.insert(0, directory)
+        
+        log_browse_btn = ttk.Button(dir_entry_frame, text="Browse...", 
+                                   style='LightBlue.TButton', width=12,
+                                   command=browse_log_directory)
+        log_browse_btn.pack(anchor=tk.W)  # Align to left
+        
+        # Information text
+        info_text = ttk.Label(log_dir_frame, text="If left empty, log will be saved to the same directory\nas the SQL script(s)", 
+                             font=('TkDefaultFont', 8), foreground='gray')
+        info_text.pack(anchor=tk.W, pady=(5, 0))
+        
+        # Add callback to enable/disable log directory controls based on enable logging checkbox
+        def toggle_logging_controls(*args):
+            if enable_logging_var.get():
+                log_dir_label.configure(state='normal')
+                log_dir_entry.configure(state='normal')
+                log_browse_btn.configure(state='normal')
+                info_text.configure(state='normal')
+            else:
+                log_dir_label.configure(state='disabled')
+                log_dir_entry.configure(state='disabled')
+                log_browse_btn.configure(state='disabled')
+                info_text.configure(state='disabled')
+        
+        # Set initial state based on checkbox value
+        toggle_logging_controls()
+        
+        # Monitor changes to enable_logging_var and call toggle_logging_controls when it changes
+        enable_logging_var.trace('w', toggle_logging_controls)
+
     def _save_changes(self, entries, window, on_save_callback):
         """Save configuration changes"""
         try:
@@ -394,6 +476,12 @@ class ConfigManager:
             # Ensure insert_batch_size exists
             if "insert_batch_size" not in self.config:
                 self.config["insert_batch_size"] = 5000
+                
+            # Ensure logging settings exist
+            if "enable_logging" not in self.config:
+                self.config["enable_logging"] = True
+            if "log_directory" not in self.config:
+                self.config["log_directory"] = ""
                 
             self.save()
             

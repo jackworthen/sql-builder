@@ -1359,8 +1359,8 @@ class SQLTableBuilder:
                         all_values.append(self.format_insert_values(row, column_types))
                         total_rows_processed += 1
                         
-                        # Update progress every 1000 rows for better user feedback
-                        if total_rows_processed % 1000 == 0:
+                        # Update progress every 5000 rows to reduce flashing
+                        if total_rows_processed % 5000 == 0:
                             progress.update_text(f"Processed {total_rows_processed:,} rows...")
                 
                 if progress.cancelled:

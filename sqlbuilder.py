@@ -1131,6 +1131,14 @@ class SQLTableBuilder:
                   command=self.safe_exit).pack(side="left", padx=10)
 
     def handle_generate_scripts(self):
+        # Validate table name before proceeding
+        table_name = self.table_name.get().strip()
+        if not table_name:
+            messagebox.showerror("Missing Table Name", 
+                               "Please enter a table name before saving the scripts.\n\n"
+                               "The table name is required to generate valid SQL scripts.")
+            return
+        
         create_file_path = None
         
         if self.include_create_script.get():

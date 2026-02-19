@@ -1,5 +1,7 @@
-/venv/
-/build/
-/dist/
-/__pycache__/
+.venv/
+venv/
+build/
+dist/
+__pycache__/
 *.spec
+*.json

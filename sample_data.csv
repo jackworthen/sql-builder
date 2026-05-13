@@ -1,0 +1,11 @@
+ID,Name,Email,JoinDate,IsActive,Salary,Notes
+1,John Doe,john.doe@example.com,2023-01-15,True,75000.50,Senior Developer with 10 years experience.
+2,Jane Smith,jane.smith@example.com,2023-02-20,False,62000.00,"Project Manager, loves hiking."
+3,Bob Johnson,bob.j@example.com,2023-03-05,True,55000.75,Junior QA engineer.
+4,Alice Williams,alice.w@example.com,2023-04-12,True,82000.00,Specializes in backend architecture.
+5,Charlie Brown,charlie.b@example.com,2023-05-18,False,48000.25,Recent graduate from State University.
+6,David Miller,david.m@example.com,2023-06-22,True,91000.00,DevOps specialist.
+7,Eve Davis,eve.d@example.com,2023-07-30,True,68000.50,UX Designer.
+8,Frank Wilson,frank.w@example.com,2023-08-14,False,59000.00,Marketing lead.
+9,Grace Taylor,grace.t@example.com,2023-09-02,True,73000.25,Data scientist.
+10,Henry Moore,henry.m@example.com,2023-10-10,True,65000.00,Business analyst.

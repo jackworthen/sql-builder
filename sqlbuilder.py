@@ -698,7 +698,6 @@ class SQLTableBuilder:
                 print(f"Error creating large file indicator: {e}")
   
     def build_file_selection_screen(self):
-        self.master.iconbitmap(resource_path('sqlbuilder_icon.ico'))  # This sets the icon
         self.delimiter.set("")  # Clear the delimiter field
         self.file_path.set("")  # Clear previously selected file
         self.data_cache.clear()  # Clear cached data

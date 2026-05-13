@@ -300,7 +300,6 @@ GO
 sql-builder/
 ├── 📄 sqlbuilder.py          # Main application with optimized processing
 ├── ⚙️ config_manager.py      # Configuration and settings management
-├── 🎨 sqlbuilder_icon.ico    # Application icon
 ├── 📚 README.md              # This comprehensive guide
 ├── 📋 requirements.txt       # Python dependencies
 └── 🧪 tests/                 # Test files (coming soon!)

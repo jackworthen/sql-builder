@@ -15,14 +15,13 @@ def get_config_path():
     import platform
     import os
 
-    app_name = "SQLTableBuilderPro"
-
     if platform.system() == "Windows":
+        app_name = "SQLTableBuilderPro"
         base_dir = os.environ.get("APPDATA", os.path.expanduser("~"))
+        config_dir = os.path.join(base_dir, app_name)
     else:
-        base_dir = os.path.join(os.path.expanduser("~"), ".config")
+        config_dir = os.path.expanduser("~/.local/share/sqlbuilder")
 
-    config_dir = os.path.join(base_dir, app_name)
     os.makedirs(config_dir, exist_ok=True)
     return os.path.join(config_dir, "config.json")
 
@@ -91,7 +90,6 @@ class ConfigManager:
 
     def open_settings_window(self, master, on_save_callback=None):
         window = tk.Toplevel(master)
-        window.iconbitmap(resource_path('sqlbuilder_icon.ico'))
         window.title("Settings")
         window.geometry("420x525")  # Increased width to show Browse button, reduced height after removing Log Content
         window.resizable(False, False)

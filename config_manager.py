@@ -91,7 +91,7 @@ class ConfigManager:
     def open_settings_window(self, master, on_save_callback=None):
         window = tk.Toplevel(master)
         window.title("Settings")
-        window.geometry("420x525")  # Increased width to show Browse button, reduced height after removing Log Content
+        window.geometry("420x560")  # Increased height to ensure buttons are fully visible
         window.resizable(False, False)
         
         # Center the window

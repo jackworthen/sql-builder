@@ -940,7 +940,7 @@ class SQLTableBuilder:
       
     def build_column_type_screen(self):
         self.additional_column_count = 0
-        self.master.geometry("550x800")
+        self.master.geometry("650x800")
         for widget in self.master.winfo_children():
             widget.destroy()
 
@@ -1022,9 +1022,9 @@ class SQLTableBuilder:
 
         header_row = tk.Frame(self.scrollable_frame)
         header_row.pack(fill="x", pady=2)
-        tk.Label(header_row, text="🔑", width=3, anchor="w").pack(side="left")
-        tk.Label(header_row, text="Column Name", width=26, anchor="w").pack(side="left")
-        tk.Label(header_row, text="Data Type", width=26, anchor="w").pack(side="left")
+        tk.Label(header_row, text="🔑", width=4, anchor="w").pack(side="left")
+        tk.Label(header_row, text="Column Name", width=30, anchor="w").pack(side="left")
+        tk.Label(header_row, text="Data Type", width=30, anchor="w").pack(side="left")
         tk.Label(header_row, text="Null", width=5, anchor="w").pack(side="left")
 
         self.column_entries.clear()

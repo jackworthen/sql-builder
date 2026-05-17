@@ -1,19 +1,12 @@
 from config_manager import ConfigManager
 from sql_engine import DataCache, OptimizedTypeInferrer, SQLGenerator
-import re
-from datetime import datetime
-from collections import defaultdict, Counter
-import threading
 from concurrent.futures import ThreadPoolExecutor
 import time
-import json
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog, messagebox
-import csv
 import sys
 import os
-import logging
 
 def resource_path(filename):
     """ Get absolute path to resource, works for dev and for PyInstaller bundle """
